@@ -40,8 +40,8 @@ Pod::Spec.new do |s|
     BASE_URL="https://github.com/SiaFoundation/indexd-sdk/releases/download/v${VERSION}"
 
     # Download the XCFramework and checksum file
-    curl -L -o IndexdSDKFFI.xcframework.zip "${BASE_URL}/IndexdSDKFFI-${VERSION}.xcframework.zip"
-    curl -L -o CHECKSUMS.txt "${BASE_URL}/CHECKSUMS.txt"
+    curl -fL --retry 3 -o IndexdSDKFFI.xcframework.zip "${BASE_URL}/IndexdSDKFFI-${VERSION}.xcframework.zip"
+    curl -fL --retry 3 -o CHECKSUMS.txt "${BASE_URL}/CHECKSUMS.txt"
 
     # Verify the checksum before extracting
     EXPECTED_CHECKSUM=$(grep "IndexdSDKFFI-${VERSION}.xcframework.zip" CHECKSUMS.txt | cut -d: -f2 | tr -d ' ')

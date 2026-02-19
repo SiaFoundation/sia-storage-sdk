@@ -80,7 +80,7 @@ struct IndexdSDKExample {
         do {
             let builder = try Builder(indexerUrl: indexerUrl)
 
-            _ = try await builder.requestConnection(meta: AppMeta(
+            let builder = try await builder.requestConnection(meta: AppMeta(
                 id: appId,
                 name: "swift example",
                 description: "an example app",

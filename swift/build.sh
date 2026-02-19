@@ -83,6 +83,7 @@ cp "$GEN_DIR/${SWIFT_MODULE}.swift" "$REPO_ROOT/swift/Sources/$SWIFT_MODULE/$SWI
 echo "Swift source updated at: $REPO_ROOT/swift/Sources/$SWIFT_MODULE"
 
 # Distribution zip with checksum
+rm -f "$BUILD_DIR/${FFI_MODULE}.xcframework.zip"
 (cd "$BUILD_DIR" && zip -rq "${FFI_MODULE}.xcframework.zip" "${FFI_MODULE}.xcframework")
 CHECKSUM=$(swift package compute-checksum "$BUILD_DIR/${FFI_MODULE}.xcframework.zip")
 

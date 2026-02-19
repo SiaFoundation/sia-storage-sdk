@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - pj/add-swift
   pull_request:
   workflow_dispatch:
     inputs:

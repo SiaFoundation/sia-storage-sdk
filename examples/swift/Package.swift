@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Example",
+    name: "IndexdExample",
     platforms: [
         .iOS(.v16),
         .macOS(.v14)
@@ -13,7 +13,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "Example",
+            name: "IndexdExample",
             dependencies: [
                 .product(name: "IndexdSDK", package: "indexd-sdk"),
             ],

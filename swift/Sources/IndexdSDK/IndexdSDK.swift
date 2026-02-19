@@ -1533,6 +1533,11 @@ public protocol PackedUploadProtocol: AnyObject, Sendable {
     func add(reader: Reader) async throws  -> UInt64
     
     /**
+     * Cancels the upload. This will immediately cancel the upload and return.
+     */
+    func cancel() async throws 
+    
+    /**
      * Finalizes the upload and returns the resulting objects. This will wait for all readers
      * to finish and all slabs to be uploaded before returning. The resulting objects will contain the metadata needed to download the objects.
      *
@@ -1541,12 +1546,22 @@ public protocol PackedUploadProtocol: AnyObject, Sendable {
     func finalize() async throws  -> [PinnedObject]
     
     /**
+     * Returns the number of bytes added so far.
+     */
+    func length()  -> UInt64
+    
+    /**
      * Returns the number of bytes remaining until reaching the optimal
      * packed size. Adding objects larger than this will start a new slab.
      * To minimize padding, prioritize objects that fit within the remaining
      * size.
      */
-    func remaining() async throws  -> UInt64
+    func remaining()  -> UInt64
+    
+    /**
+     * Returns the number of slabs in the upload.
+     */
+    func slabs()  -> UInt64
     
 }
 /**
@@ -1629,6 +1644,26 @@ open func add(reader: Reader)async throws  -> UInt64  {
 }
     
     /**
+     * Cancels the upload. This will immediately cancel the upload and return.
+     */
+open func cancel()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_indexd_ffi_fn_method_packedupload_cancel(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
+            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
+            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeUploadError_lift
+        )
+}
+    
+    /**
      * Finalizes the upload and returns the resulting objects. This will wait for all readers
      * to finish and all slabs to be uploaded before returning. The resulting objects will contain the metadata needed to download the objects.
      *
@@ -1652,26 +1687,36 @@ open func finalize()async throws  -> [PinnedObject]  {
 }
     
     /**
+     * Returns the number of bytes added so far.
+     */
+open func length() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_indexd_ffi_fn_method_packedupload_length(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
      * Returns the number of bytes remaining until reaching the optimal
      * packed size. Adding objects larger than this will start a new slab.
      * To minimize padding, prioritize objects that fit within the remaining
      * size.
      */
-open func remaining()async throws  -> UInt64  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_packedupload_remaining(
-                    self.uniffiClonePointer()
-                    
-                )
-            },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_u64,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_u64,
-            freeFunc: ffi_indexd_ffi_rust_future_free_u64,
-            liftFunc: FfiConverterUInt64.lift,
-            errorHandler: FfiConverterTypeUploadError_lift
-        )
+open func remaining() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_indexd_ffi_fn_method_packedupload_remaining(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Returns the number of slabs in the upload.
+     */
+open func slabs() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_indexd_ffi_fn_method_packedupload_slabs(self.uniffiClonePointer(),$0
+    )
+})
 }
     
 
@@ -5809,10 +5854,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_indexd_ffi_checksum_method_packedupload_add() != 36669) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_indexd_ffi_checksum_method_packedupload_cancel() != 9235) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_indexd_ffi_checksum_method_packedupload_finalize() != 9491) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_remaining() != 3225) {
+    if (uniffi_indexd_ffi_checksum_method_packedupload_length() != 46437) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_indexd_ffi_checksum_method_packedupload_remaining() != 60139) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_indexd_ffi_checksum_method_packedupload_slabs() != 54392) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_indexd_ffi_checksum_method_pinnedobject_created_at() != 22273) {

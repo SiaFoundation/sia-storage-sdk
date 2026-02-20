@@ -49,7 +49,7 @@ fun main() = runBlocking {
 
     for (i in 0 until 10) {
         val data = "hello, world $i!"
-        val reader = InputStreamReader(ByteArrayInputStream(data.toByteArray()))
+        val reader = StreamReader(ByteArrayInputStream(data.toByteArray()))
         val size = upload.add(reader)
         val rem = upload.remaining()
         println("upload $i added $size bytes ($rem remaining)")

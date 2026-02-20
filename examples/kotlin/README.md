@@ -22,6 +22,7 @@ cargo build --release
 
 # Generate Kotlin bindings
 cargo run --bin uniffi-bindgen generate \
+    --no-format \
     --library target/release/libindexd_ffi.so \
     --language kotlin \
     --out-dir kotlin/src/main/kotlin \

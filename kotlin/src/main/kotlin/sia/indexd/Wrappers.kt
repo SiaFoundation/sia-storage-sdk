@@ -21,13 +21,13 @@ import java.io.OutputStream
  * Example:
  * ```kotlin
  * // From bytes
- * val reader = InputStreamReader(ByteArrayInputStream(data))
+ * val reader = StreamReader(ByteArrayInputStream(data))
  *
  * // From file
- * val reader = InputStreamReader(FileInputStream("data.bin"))
+ * val reader = StreamReader(FileInputStream("data.bin"))
  * ```
  */
-class InputStreamReader(
+class StreamReader(
     private val stream: InputStream,
     private val chunkSize: Int = 65536,
 ) : Reader {
@@ -48,13 +48,13 @@ class InputStreamReader(
  * ```kotlin
  * // To ByteArrayOutputStream
  * val buffer = ByteArrayOutputStream()
- * val writer = OutputStreamWriter(buffer)
+ * val writer = StreamWriter(buffer)
  *
  * // To file
- * val writer = OutputStreamWriter(FileOutputStream("output.bin"))
+ * val writer = StreamWriter(FileOutputStream("output.bin"))
  * ```
  */
-class OutputStreamWriter(
+class StreamWriter(
     private val stream: OutputStream,
 ) : Writer {
     override suspend fun write(data: ByteArray) {
@@ -75,7 +75,7 @@ class OutputStreamWriter(
 suspend fun Sdk.uploadBytes(
     data: ByteArray,
     options: UploadOptions = UploadOptions(),
-): PinnedObject = upload(InputStreamReader(ByteArrayInputStream(data)), options)
+): PinnedObject = upload(StreamReader(ByteArrayInputStream(data)), options)
 
 /**
  * Download an object and return its contents as bytes.
@@ -90,6 +90,6 @@ suspend fun Sdk.downloadBytes(
     options: DownloadOptions = DownloadOptions(),
 ): ByteArray {
     val buffer = ByteArrayOutputStream()
-    download(OutputStreamWriter(buffer), obj, options)
+    download(StreamWriter(buffer), obj, options)
     return buffer.toByteArray()
 }

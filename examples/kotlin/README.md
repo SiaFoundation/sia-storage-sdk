@@ -8,7 +8,7 @@ Add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("tech.sia:sia-indexd:0.3.0")
+    implementation("tech.sia:siaindexd:0.3.0")
 }
 ```
 
@@ -43,7 +43,10 @@ gradle build
 
 ## Usage
 
-See `Example.kt` for a full working example. To run it, add the SDK JAR to your project's dependencies and compile/run the example with Kotlin.
+```bash
+cd examples/kotlin
+gradle run
+```
 
 ## Coroutine Support
 

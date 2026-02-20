@@ -86,7 +86,7 @@ jobs:
         run: cargo build --release
 
       - name: Generate Kotlin bindings
-        run: cargo run --bin uniffi-bindgen generate --library target/release/libindexd_ffi.so --language kotlin --out-dir bindings --config kotlin/uniffi.toml
+        run: cargo run --bin uniffi-bindgen generate --library target/release/libindexd_ffi.so --language kotlin --out-dir bindings --config kotlin/uniffi.toml --no-format
 
       - name: Upload bindings
         uses: actions/upload-artifact@v4
@@ -200,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jar
-          path: kotlin/build/libs/sia-indexd-*.jar
+          path: kotlin/build/libs/siaindexd-*.jar
 
   publish:
     name: Publish to Maven Central
@@ -261,3 +261,5 @@ jobs:
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}

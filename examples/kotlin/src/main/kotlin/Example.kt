@@ -5,7 +5,7 @@ import java.io.ByteArrayInputStream
 class PrintLogger : Logger {
     override fun debug(msg: String) = println("DEBUG $msg")
     override fun info(msg: String) = println("INFO $msg")
-    override fun warning(msg: String) = println("WARNING $msg")
+    override fun warn(msg: String) = println("WARN $msg")
     override fun error(msg: String) = println("ERROR $msg")
 }
 

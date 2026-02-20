@@ -34,11 +34,11 @@ java {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            artifactId = "sia-indexd"
+            artifactId = "siaindexd"
             from(components["java"])
 
             pom {
-                name.set("sia-indexd")
+                name.set("siaindexd")
                 description.set("Kotlin SDK for interacting with the Sia decentralized storage network")
                 url.set("https://github.com/SiaFoundation/indexd-sdk")
 
@@ -79,10 +79,12 @@ publishing {
 }
 
 signing {
-    useGpgCmd()
+    val signingKey: String? = System.getenv("SIGNING_KEY")
+    val signingPassword: String? = System.getenv("SIGNING_PASSWORD")
+    useInMemoryPgpKeys(signingKey, signingPassword)
     sign(publishing.publications["maven"])
 }
 
 tasks.withType<Sign>().configureEach {
-    onlyIf { project.hasProperty("signing.gnupg.keyName") }
+    onlyIf { System.getenv("SIGNING_KEY") != null }
 }

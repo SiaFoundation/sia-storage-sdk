@@ -1,1 +1,1 @@
-rootProject.name = "sia-indexd"
+rootProject.name = "siaindexd"

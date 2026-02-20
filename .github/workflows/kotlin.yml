@@ -16,6 +16,9 @@ on:
 permissions:
   contents: read
 
+env:
+  GRADLE_VERSION: '8.10.2'
+
 jobs:
   build:
     name: Build native library (${{ matrix.target }})
@@ -123,6 +126,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
       - name: Download generated bindings
         uses: actions/download-artifact@v4
@@ -155,6 +160,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
       - name: Download generated bindings
         uses: actions/download-artifact@v4
@@ -218,46 +225,18 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
-      - name: Download generated bindings
+      - name: Download packaged JAR artifacts
         uses: actions/download-artifact@v4
         with:
-          name: kotlin-bindings
-          path: kotlin/src/main/kotlin
-
-      - name: Download linux-x86-64
-        uses: actions/download-artifact@v4
-        with:
-          name: native-x86_64-unknown-linux-gnu
-          path: kotlin/src/main/resources/linux-x86-64
-
-      - name: Download linux-aarch64
-        uses: actions/download-artifact@v4
-        with:
-          name: native-aarch64-unknown-linux-gnu
-          path: kotlin/src/main/resources/linux-aarch64
-
-      - name: Download darwin-x86-64
-        uses: actions/download-artifact@v4
-        with:
-          name: native-x86_64-apple-darwin
-          path: kotlin/src/main/resources/darwin-x86-64
-
-      - name: Download darwin-aarch64
-        uses: actions/download-artifact@v4
-        with:
-          name: native-aarch64-apple-darwin
-          path: kotlin/src/main/resources/darwin-aarch64
-
-      - name: Download win32-x86-64
-        uses: actions/download-artifact@v4
-        with:
-          name: native-x86_64-pc-windows-msvc
-          path: kotlin/src/main/resources/win32-x86-64
+          name: jar
+          path: kotlin/build/libs
 
       - name: Publish
         working-directory: kotlin
-        run: gradle publish
+        run: gradle publish -x test -x jar -x sourcesJar -x javadocJar
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}

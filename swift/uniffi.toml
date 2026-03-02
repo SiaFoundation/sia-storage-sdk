@@ -1,0 +1,4 @@
+[bindings.swift]
+module_name = "IndexdSDK"
+ffi_module_name = "IndexdSDKFFI"
+ffi_module_filename = "IndexdSDKFFI"

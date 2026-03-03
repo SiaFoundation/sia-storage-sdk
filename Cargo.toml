@@ -9,7 +9,7 @@ authors = ["The Sia Foundation"]
 
 [lib]
 name = "indexd_ffi"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 upstream_ffi = { package = "indexd_ffi", git = "https://github.com/SiaFoundation/sia-sdk-rs" }

@@ -77,7 +77,7 @@ async def main():
         data = f"hello, world {i}!"
         reader = BytesReader(BytesIO(data.encode()))
         size = await upload.add(reader)
-        rem = await upload.remaining()
+        rem = upload.remaining()
         print(f"upload {i} added {size} bytes ({rem} remaining)")
 
     objects = await upload.finalize()

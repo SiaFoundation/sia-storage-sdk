@@ -1,2 +1,2 @@
 [bindings.kotlin]
-package_name = "sia.indexd"
+package_name = "tech.sia.indexdsdk"

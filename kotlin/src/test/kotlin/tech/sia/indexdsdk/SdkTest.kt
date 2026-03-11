@@ -1,4 +1,4 @@
-package sia.indexd
+package tech.sia.indexdsdk
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

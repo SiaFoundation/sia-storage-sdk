@@ -1,5 +1,5 @@
 import kotlinx.coroutines.runBlocking
-import sia.indexd.*
+import tech.sia.indexdsdk.*
 import java.io.ByteArrayInputStream
 
 class PrintLogger : Logger {

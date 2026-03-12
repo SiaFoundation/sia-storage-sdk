@@ -5,7 +5,7 @@
  * feel native to Kotlin developers, wrapping the low-level Reader/Writer
  * traits with standard Java/Kotlin I/O support.
  */
-package tech.sia.indexdsdk
+package sia.indexd
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream

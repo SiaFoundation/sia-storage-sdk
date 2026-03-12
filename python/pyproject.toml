@@ -3,7 +3,7 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "indexd-sdk"
+name = "sia-indexd"
 description = "Python SDK for interacting with the Sia decentralized storage network"
 dynamic = ["version"]
 requires-python = ">=3.9"
@@ -34,6 +34,6 @@ Documentation = "https://github.com/SiaFoundation/indexd-sdk"
 [tool.maturin]
 manifest-path = "../Cargo.toml"
 bindings = "uniffi"
-module-name = "indexd_sdk"
+module-name = "sia_indexd"
 python-source = "."
 compatibility = "manylinux2014"

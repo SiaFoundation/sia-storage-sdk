@@ -9,7 +9,7 @@ import asyncio
 from io import BytesIO
 from typing import BinaryIO, Optional
 
-from .indexd_sdk.indexd_ffi import (
+from .sia_indexd.indexd_ffi import (
     AppMeta,
     Builder as _Builder,
     DownloadOptions,

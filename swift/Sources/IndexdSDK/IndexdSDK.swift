@@ -3226,22 +3226,7 @@ public struct Account {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(accountKey: String,
-        /**
-         * The maximum amount of data that can be pinned to the indexer for this account.
-         */maxPinnedData: UInt64,
-        /**
-         * The amount of data currently pinned to the indexer for this account. This
-         * counts towards max pinned data.
-         */pinnedData: UInt64,
-        /**
-         * The amount of data after erasure encoding. This is the actual amount of data on the network.
-         */pinnedSize: UInt64,
-        /**
-         * Whether the account is ready to be used. After registering an app, the account may not be
-         * immediately ready as the indexer needs to process the registration and sync with the network.
-         * The account will become ready once it has propagated on the network.
-         */ready: Bool, app: App, lastUsed: Date) {
+    public init(accountKey: String, maxPinnedData: UInt64, pinnedData: UInt64, pinnedSize: UInt64, ready: Bool, app: App, lastUsed: Date) {
         self.accountKey = accountKey
         self.maxPinnedData = maxPinnedData
         self.pinnedData = pinnedData

@@ -33,7 +33,7 @@ class Builder:
         self._inner = _Builder(base_url, app_meta)
 
     async def request_connection(self) -> None:
-        return await self._inner.request_connection()
+        await self._inner.request_connection()
 
     def response_url(self) -> str:
         return self._inner.response_url()

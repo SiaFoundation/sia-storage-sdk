@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "IndexdExample",
+    name: "SiaStorageExample",
     platforms: [
         .iOS(.v16),
         .macOS(.v14)
     ],
     dependencies: [
-        // Reference the IndexdSDK package at the repo root
+        // Reference the SiaStorageSDK package at the repo root
         .package(path: "../../"),
     ],
     targets: [
         .executableTarget(
-            name: "IndexdExample",
+            name: "SiaStorageExample",
             dependencies: [
-                .product(name: "IndexdSDK", package: "indexd-sdk"),
+                .product(name: "SiaStorageSDK", package: "indexd-sdk"),
             ],
             path: "Sources"
         )

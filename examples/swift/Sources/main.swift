@@ -1,5 +1,5 @@
 import Foundation
-import IndexdSDK
+import SiaStorageSDK
 
 // MARK: - Logger Implementation
 
@@ -69,7 +69,7 @@ final class BytesWriter: Writer, @unchecked Sendable {
 // MARK: - Main
 
 @main
-struct IndexdSDKExample {
+struct SiaStorageSDKExample {
     static func main() async {
         // Set up logging
         setLogger(logger: PrintLogger(), level: "debug")

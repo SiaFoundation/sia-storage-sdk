@@ -8,6 +8,6 @@ __pycache__/
 .venv/
 *.so
 *.dylib
-python/sia_indexd/sia_indexd/
+python/sia_storage_sdk/sia_storage_sdk/
 build/
 target/

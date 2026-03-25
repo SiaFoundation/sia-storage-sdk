@@ -1,5 +1,5 @@
 # Re-export all public API from the native UniFFI module
-from sia_indexd.sia_indexd.indexd_ffi import (
+from sia_storage_sdk.sia_storage_sdk.sia_storage_ffi import (
     # Functions
     generate_recovery_phrase,
     validate_recovery_phrase,
@@ -56,7 +56,7 @@ SDK = Sdk
 IOError = IoError
 
 # Idiomatic Python wrappers for common operations
-from sia_indexd.wrappers import (
+from sia_storage_sdk.wrappers import (
     Builder,
     BytesReader,
     BytesWriter,

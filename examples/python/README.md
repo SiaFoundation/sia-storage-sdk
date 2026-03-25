@@ -1,11 +1,11 @@
-# sia-indexd
+# sia-storage-sdk
 
 Python SDK for interacting with a Sia network indexer.
 
 ## Installation
 
 ```bash
-pip install sia-indexd
+pip install sia-storage-sdk
 ```
 
 ### Building from source

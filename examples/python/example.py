@@ -1,9 +1,10 @@
 import asyncio
+from base64 import b64encode
 from sys import stdin
 from datetime import datetime, timezone
 from io import BytesIO
 
-from sia_indexd import (
+from sia_storage_sdk import (
     generate_recovery_phrase,
     AppMeta,
     Builder,
@@ -66,9 +67,9 @@ async def main():
 
     # Store the app key for later use
     app_key = sdk.app_key()
-    print("App registered", app_key.export())
+    print("App registered:", b64encode(app_key.export()).decode())
 
-    print("Connected to indexd")
+    print("Connected to indexer")
 
     start = datetime.now(timezone.utc)
     upload = await sdk.upload_packed(UploadOptions())

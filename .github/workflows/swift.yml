@@ -43,12 +43,12 @@ jobs:
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4
         with:
-          name: IndexdSDKFFI-xcframework
-          path: build/IndexdSDKFFI.xcframework.zip
+          name: SiaStorageSDKFFI-xcframework
+          path: build/SiaStorageSDKFFI.xcframework.zip
 
       - name: Compute and save checksum
         run: |
-          CHECKSUM=$(swift package compute-checksum build/IndexdSDKFFI.xcframework.zip)
+          CHECKSUM=$(swift package compute-checksum build/SiaStorageSDKFFI.xcframework.zip)
           echo "$CHECKSUM" > checksum.txt
           echo "Checksum: $CHECKSUM"
 
@@ -68,19 +68,19 @@ jobs:
       - name: Download XCFramework
         uses: actions/download-artifact@v4
         with:
-          name: IndexdSDKFFI-xcframework
+          name: SiaStorageSDKFFI-xcframework
           path: build
 
       - name: Extract XCFramework
-        run: unzip -q build/IndexdSDKFFI.xcframework.zip -d build
+        run: unzip -q build/SiaStorageSDKFFI.xcframework.zip -d build
 
       - name: Build package
-        run: INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
+        run: SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
 
       - name: Build example
         run: |
           cd examples/swift
-          INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
+          SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
 
       - name: Build downstream consumer package
         run: |
@@ -106,20 +106,20 @@ jobs:
                   .executableTarget(
                       name: "ConsumerSmoke",
                       dependencies: [
-                          .product(name: "IndexdSDK", package: "indexd-sdk")
+                          .product(name: "SiaStorageSDK", package: "indexd-sdk")
                       ]
                   )
               ]
           )
           EOF
           cat > Sources/ConsumerSmoke/main.swift <<'EOF'
-          import IndexdSDK
+          import SiaStorageSDK
           import Foundation
 
           let _ = try Builder(indexerUrl: "https://app.sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))
           print("consumer smoke build ok")
           EOF
-          INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
+          SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
 
   publish:
     name: Publish to GitHub Releases
@@ -134,7 +134,7 @@ jobs:
       - name: Download XCFramework
         uses: actions/download-artifact@v4
         with:
-          name: IndexdSDKFFI-xcframework
+          name: SiaStorageSDKFFI-xcframework
           path: dist
 
       - name: Download checksum
@@ -157,10 +157,10 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
         run: |
           cd dist
-          mv IndexdSDKFFI.xcframework.zip "IndexdSDKFFI-${VERSION}.xcframework.zip"
-          SHA256=$(shasum -a 256 "IndexdSDKFFI-${VERSION}.xcframework.zip" | cut -d' ' -f1)
+          mv SiaStorageSDKFFI.xcframework.zip "SiaStorageSDKFFI-${VERSION}.xcframework.zip"
+          SHA256=$(shasum -a 256 "SiaStorageSDKFFI-${VERSION}.xcframework.zip" | cut -d' ' -f1)
           SPM_CHECKSUM=$(cat checksum.txt)
-          echo "IndexdSDKFFI-${VERSION}.xcframework.zip: $SHA256" > CHECKSUMS.txt
+          echo "SiaStorageSDKFFI-${VERSION}.xcframework.zip: $SHA256" > CHECKSUMS.txt
           echo "CHECKSUM_CONTENT=$(cat CHECKSUMS.txt)" >> "$GITHUB_ENV"
           echo "SPM_CHECKSUM=$SPM_CHECKSUM" >> "$GITHUB_ENV"
 
@@ -171,7 +171,7 @@ jobs:
           MANIFEST_URL=$(awk -F'"' '/url: "https:\/\/github.com\/SiaFoundation\/indexd-sdk\/releases\/download\/v/ {print $2}' Package.swift)
           MANIFEST_VERSION=$(echo "$MANIFEST_URL" | sed -E 's#.*\/download\/v([0-9]+\.[0-9]+\.[0-9]+)\/.*#\1#')
           MANIFEST_CHECKSUM=$(awk -F'"' '/checksum:/ {print $2}' Package.swift)
-          PODSPEC_VERSION=$(awk -F"'" '/s.version/ {print $2}' IndexdSDK.podspec)
+          PODSPEC_VERSION=$(awk -F"'" '/s.version/ {print $2}' SiaStorageSDK.podspec)
 
           if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
             echo "Error: Package.swift release URL version ($MANIFEST_VERSION) does not match workflow version ($VERSION)"
@@ -184,7 +184,7 @@ jobs:
           fi
 
           if [ "$PODSPEC_VERSION" != "$VERSION" ]; then
-            echo "Error: IndexdSDK.podspec version ($PODSPEC_VERSION) does not match workflow version ($VERSION)"
+            echo "Error: SiaStorageSDK.podspec version ($PODSPEC_VERSION) does not match workflow version ($VERSION)"
             exit 1
           fi
 
@@ -192,9 +192,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.event.inputs.version }}
-          name: IndexdSDK Swift v${{ github.event.inputs.version }}
+          name: SiaStorageSDK Swift v${{ github.event.inputs.version }}
           body: |
-            ## IndexdSDK for Swift v${{ github.event.inputs.version }}
+            ## SiaStorageSDK for Swift v${{ github.event.inputs.version }}
 
             ### Installation
 
@@ -212,7 +212,7 @@ jobs:
             #### CocoaPods
 
             ```ruby
-            pod 'IndexdSDK', '~> ${{ github.event.inputs.version }}'
+            pod 'SiaStorageSDK', '~> ${{ github.event.inputs.version }}'
             ```
 
             ### Checksums
@@ -226,7 +226,7 @@ jobs:
             ${{ env.SPM_CHECKSUM }}
             ```
           files: |
-            dist/IndexdSDKFFI-${{ github.event.inputs.version }}.xcframework.zip
+            dist/SiaStorageSDKFFI-${{ github.event.inputs.version }}.xcframework.zip
             dist/CHECKSUMS.txt
           draft: false
           prerelease: false
@@ -263,14 +263,14 @@ jobs:
                   .executableTarget(
                       name: "ReleaseSmoke",
                       dependencies: [
-                          .product(name: "IndexdSDK", package: "indexd-sdk")
+                          .product(name: "SiaStorageSDK", package: "indexd-sdk")
                       ]
                   )
               ]
           )
           EOF
           cat > Sources/ReleaseSmoke/main.swift <<'EOF'
-          import IndexdSDK
+          import SiaStorageSDK
           import Foundation
 
           let _ = try Builder(indexerUrl: "https://app.sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))

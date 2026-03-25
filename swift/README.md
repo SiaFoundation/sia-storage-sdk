@@ -1,6 +1,6 @@
-# IndexdSDK for Swift
+# SiaStorageSDK for Swift
 
-Swift bindings for Indexd, built with Rust and UniFFI.
+Swift bindings for Sia Storage, built with Rust and UniFFI.
 
 ## Requirements
 
@@ -20,13 +20,13 @@ dependencies: [
 ]
 ```
 
-Then add `IndexdSDK` to your target's dependencies:
+Then add `SiaStorageSDK` to your target's dependencies:
 
 ```swift
 .target(
     name: "YourTarget",
     dependencies: [
-        .product(name: "IndexdSDK", package: "indexd-sdk")
+        .product(name: "SiaStorageSDK", package: "indexd-sdk")
     ]
 )
 ```
@@ -36,13 +36,13 @@ Or in Xcode: File → Add Packages → enter the repository URL.
 ### CocoaPods
 
 ```ruby
-pod 'IndexdSDK', '~> 0.1'
+pod 'SiaStorageSDK', '~> 0.1'
 ```
 
 ## Example
 
 ```swift
-import IndexdSDK
+import SiaStorageSDK
 
 // Set up logging
 setLogger(logger: MyLogger(), level: "debug")
@@ -91,11 +91,11 @@ rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch
 ./swift/build.sh
 
 # Build the package locally
-INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
+SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
 
 # Run the example
 cd examples/swift
-INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift run
+SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift run
 ```
 
 ## License

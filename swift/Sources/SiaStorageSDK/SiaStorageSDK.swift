@@ -7,8 +7,8 @@ import Foundation
 // Depending on the consumer's build setup, the low-level FFI code
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
-#if canImport(IndexdSDKFFI)
-import IndexdSDKFFI
+#if canImport(SiaStorageSDKFFI)
+import SiaStorageSDKFFI
 #endif
 
 fileprivate extension RustBuffer {
@@ -25,13 +25,13 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_indexd_ffi_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        try! rustCall { ffi_sia_storage_ffi_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
     }
 
     // Frees the buffer in place.
     // The buffer must not be used after this is called.
     func deallocate() {
-        try! rustCall { ffi_indexd_ffi_rustbuffer_free(self, $0) }
+        try! rustCall { ffi_sia_storage_ffi_rustbuffer_free(self, $0) }
     }
 }
 
@@ -281,7 +281,7 @@ private func makeRustCall<T, E: Swift.Error>(
     _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T,
     errorHandler: ((RustBuffer) throws -> E)?
 ) throws -> T {
-    uniffiEnsureIndexdFfiInitialized()
+    uniffiEnsureSiaStorageFfiInitialized()
     var callStatus = RustCallStatus.init()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
@@ -687,7 +687,7 @@ open class AppKey: AppKeyProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_appkey(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_appkey(self.pointer, $0) }
     }
     /**
      * Imports an AppKey from the provided byte array.
@@ -698,7 +698,7 @@ open class AppKey: AppKeyProtocol, @unchecked Sendable {
 public convenience init(key: Data)throws  {
     let pointer =
         try rustCallWithError(FfiConverterTypeAppKeyError_lift) {
-    uniffi_indexd_ffi_fn_constructor_appkey_new(
+    uniffi_sia_storage_ffi_fn_constructor_appkey_new(
         FfiConverterData.lower(key),$0
     )
 }
@@ -710,7 +710,7 @@ public convenience init(key: Data)throws  {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_appkey(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_appkey(pointer, $0) }
     }
 
     
@@ -725,7 +725,7 @@ public convenience init(key: Data)throws  {
      */
 open func export() -> Data  {
     return try!  FfiConverterData.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_appkey_export(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_appkey_export(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -737,7 +737,7 @@ open func export() -> Data  {
      */
 open func publicKey() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_appkey_public_key(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_appkey_public_key(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -747,7 +747,7 @@ open func publicKey() -> String  {
      */
 open func sign(message: Data) -> Data  {
     return try!  FfiConverterData.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_appkey_sign(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_appkey_sign(self.uniffiClonePointer(),
         FfiConverterData.lower(message),$0
     )
 })
@@ -758,7 +758,7 @@ open func sign(message: Data) -> Data  {
      */
 open func verifySignature(message: Data, signature: Data)throws  -> Bool  {
     return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeAppKeyError_lift) {
-    uniffi_indexd_ffi_fn_method_appkey_verify_signature(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_appkey_verify_signature(self.uniffiClonePointer(),
         FfiConverterData.lower(message),
         FfiConverterData.lower(signature),$0
     )
@@ -908,7 +908,7 @@ open class Builder: BuilderProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_builder(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_builder(self.pointer, $0) }
     }
     /**
      * Creates a new SDK builder with the provided indexer URL.
@@ -920,7 +920,7 @@ open class Builder: BuilderProtocol, @unchecked Sendable {
 public convenience init(indexerUrl: String, appMeta: AppMeta)throws  {
     let pointer =
         try rustCallWithError(FfiConverterTypeBuilderError_lift) {
-    uniffi_indexd_ffi_fn_constructor_builder_new(
+    uniffi_sia_storage_ffi_fn_constructor_builder_new(
         FfiConverterString.lower(indexerUrl),
         FfiConverterTypeAppMeta_lower(appMeta),$0
     )
@@ -933,7 +933,7 @@ public convenience init(indexerUrl: String, appMeta: AppMeta)throws  {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_builder(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_builder(pointer, $0) }
     }
 
     
@@ -952,14 +952,14 @@ open func connected(appKey: AppKey)async throws  -> Sdk?  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_builder_connected(
+                uniffi_sia_storage_ffi_fn_method_builder_connected(
                     self.uniffiClonePointer(),
                     FfiConverterTypeAppKey_lower(appKey)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterOptionTypeSDK.lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
@@ -977,14 +977,14 @@ open func register(mnemonic: String)async throws  -> Sdk  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_builder_register(
+                uniffi_sia_storage_ffi_fn_method_builder_register(
                     self.uniffiClonePointer(),
                     FfiConverterString.lower(mnemonic)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypeSDK_lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
@@ -1002,13 +1002,14 @@ open func requestConnection()async throws  -> Builder  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_builder_request_connection(
+                uniffi_sia_storage_ffi_fn_method_builder_request_connection(
                     self.uniffiClonePointer()
+                    
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypeBuilder_lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
@@ -1021,7 +1022,7 @@ open func requestConnection()async throws  -> Builder  {
      */
 open func responseUrl()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeBuilderError_lift) {
-    uniffi_indexd_ffi_fn_method_builder_response_url(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_builder_response_url(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1035,14 +1036,14 @@ open func waitForApproval()async throws  -> Builder  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_builder_wait_for_approval(
+                uniffi_sia_storage_ffi_fn_method_builder_wait_for_approval(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypeBuilder_lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
@@ -1155,7 +1156,7 @@ open class EncryptionKey: EncryptionKeyProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_encryptionkey(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_encryptionkey(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -1164,13 +1165,13 @@ open class EncryptionKey: EncryptionKeyProtocol, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_encryptionkey(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_encryptionkey(pointer, $0) }
     }
 
     
 public static func parse(str: String)throws  -> EncryptionKey  {
     return try  FfiConverterTypeEncryptionKey_lift(try rustCallWithError(FfiConverterTypeEncryptionKeyParseError_lift) {
-    uniffi_indexd_ffi_fn_constructor_encryptionkey_parse(
+    uniffi_sia_storage_ffi_fn_constructor_encryptionkey_parse(
         FfiConverterString.lower(str),$0
     )
 })
@@ -1187,7 +1188,7 @@ public static func parse(str: String)throws  -> EncryptionKey  {
      */
 open func export() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_encryptionkey_export(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_encryptionkey_export(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1298,7 +1299,7 @@ open class LoggerImpl: Logger, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_logger(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_logger(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -1307,35 +1308,35 @@ open class LoggerImpl: Logger, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_logger(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_logger(pointer, $0) }
     }
 
     
 
     
 open func info(msg: String)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_logger_info(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_logger_info(self.uniffiClonePointer(),
         FfiConverterString.lower(msg),$0
     )
 }
 }
     
 open func warn(msg: String)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_logger_warn(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_logger_warn(self.uniffiClonePointer(),
         FfiConverterString.lower(msg),$0
     )
 }
 }
     
 open func error(msg: String)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_logger_error(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_logger_error(self.uniffiClonePointer(),
         FfiConverterString.lower(msg),$0
     )
 }
 }
     
 open func debug(msg: String)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_logger_debug(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_logger_debug(self.uniffiClonePointer(),
         FfiConverterString.lower(msg),$0
     )
 }
@@ -1460,7 +1461,7 @@ fileprivate struct UniffiCallbackInterfaceLogger {
 }
 
 private func uniffiCallbackInitLogger() {
-    uniffi_indexd_ffi_fn_init_callback_vtable_logger(UniffiCallbackInterfaceLogger.vtable)
+    uniffi_sia_storage_ffi_fn_init_callback_vtable_logger(UniffiCallbackInterfaceLogger.vtable)
 }
 
 
@@ -1610,7 +1611,7 @@ open class PackedUpload: PackedUploadProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_packedupload(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_packedupload(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -1619,7 +1620,7 @@ open class PackedUpload: PackedUploadProtocol, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_packedupload(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_packedupload(pointer, $0) }
     }
 
     
@@ -1634,14 +1635,14 @@ open func add(reader: Reader)async throws  -> UInt64  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_packedupload_add(
+                uniffi_sia_storage_ffi_fn_method_packedupload_add(
                     self.uniffiClonePointer(),
                     FfiConverterTypeReader_lower(reader)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_u64,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_u64,
-            freeFunc: ffi_indexd_ffi_rust_future_free_u64,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
             liftFunc: FfiConverterUInt64.lift,
             errorHandler: FfiConverterTypeUploadError_lift
         )
@@ -1654,14 +1655,14 @@ open func cancel()async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_packedupload_cancel(
+                uniffi_sia_storage_ffi_fn_method_packedupload_cancel(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeUploadError_lift
         )
@@ -1677,14 +1678,14 @@ open func finalize()async throws  -> [PinnedObject]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_packedupload_finalize(
+                uniffi_sia_storage_ffi_fn_method_packedupload_finalize(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypePinnedObject.lift,
             errorHandler: FfiConverterTypeUploadError_lift
         )
@@ -1695,7 +1696,7 @@ open func finalize()async throws  -> [PinnedObject]  {
      */
 open func length() -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_packedupload_length(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_packedupload_length(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1708,7 +1709,7 @@ open func length() -> UInt64  {
      */
 open func remaining() -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_packedupload_remaining(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_packedupload_remaining(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1718,7 +1719,7 @@ open func remaining() -> UInt64  {
      */
 open func slabs() -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_packedupload_slabs(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_packedupload_slabs(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1801,6 +1802,12 @@ public protocol PinnedObjectProtocol: AnyObject, Sendable {
      * Returns the time the object was created.
      */
     func createdAt()  -> Date
+    
+    /**
+     * Returns the total encoded size of the object after erasure coding
+     * by summing the sizes of its slabs.
+     */
+    func encodedSize()  -> UInt64
     
     /**
      * Returns the object's ID, which is the Blake2b hash of its slabs.
@@ -1894,7 +1901,7 @@ open class PinnedObject: PinnedObjectProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_pinnedobject(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_pinnedobject(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -1903,7 +1910,7 @@ open class PinnedObject: PinnedObjectProtocol, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_pinnedobject(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_pinnedobject(pointer, $0) }
     }
 
     
@@ -1919,7 +1926,7 @@ open class PinnedObject: PinnedObjectProtocol, @unchecked Sendable {
      */
 public static func `open`(appKey: AppKey, sealed: SealedObject)throws  -> PinnedObject  {
     return try  FfiConverterTypePinnedObject_lift(try rustCallWithError(FfiConverterTypeObjectError_lift) {
-    uniffi_indexd_ffi_fn_constructor_pinnedobject_open(
+    uniffi_sia_storage_ffi_fn_constructor_pinnedobject_open(
         FfiConverterTypeAppKey_lower(appKey),
         FfiConverterTypeSealedObject_lower(sealed),$0
     )
@@ -1933,7 +1940,18 @@ public static func `open`(appKey: AppKey, sealed: SealedObject)throws  -> Pinned
      */
 open func createdAt() -> Date  {
     return try!  FfiConverterTimestamp.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_created_at(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_created_at(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Returns the total encoded size of the object after erasure coding
+     * by summing the sizes of its slabs.
+     */
+open func encodedSize() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_encoded_size(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1943,7 +1961,7 @@ open func createdAt() -> Date  {
      */
 open func id() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_id(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_id(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1953,7 +1971,7 @@ open func id() -> String  {
      */
 open func metadata() -> Data  {
     return try!  FfiConverterData.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_metadata(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_metadata(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1968,7 +1986,7 @@ open func metadata() -> Data  {
      */
 open func seal(appKey: AppKey) -> SealedObject  {
     return try!  FfiConverterTypeSealedObject_lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_seal(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_seal(self.uniffiClonePointer(),
         FfiConverterTypeAppKey_lower(appKey),$0
     )
 })
@@ -1979,7 +1997,7 @@ open func seal(appKey: AppKey) -> SealedObject  {
      */
 open func size() -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_size(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_size(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1989,7 +2007,7 @@ open func size() -> UInt64  {
      */
 open func slabs() -> [Slab]  {
     return try!  FfiConverterSequenceTypeSlab.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_slabs(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_slabs(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1998,7 +2016,7 @@ open func slabs() -> [Slab]  {
      * Updates the metadata associated with the object.
      */
 open func updateMetadata(metadata: Data)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_update_metadata(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_update_metadata(self.uniffiClonePointer(),
         FfiConverterData.lower(metadata),$0
     )
 }
@@ -2009,7 +2027,7 @@ open func updateMetadata(metadata: Data)  {try! rustCall() {
      */
 open func updatedAt() -> Date  {
     return try!  FfiConverterTimestamp.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_pinnedobject_updated_at(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_updated_at(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -2134,7 +2152,7 @@ open class ReaderImpl: Reader, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_reader(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_reader(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -2143,7 +2161,7 @@ open class ReaderImpl: Reader, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_reader(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_reader(pointer, $0) }
     }
 
     
@@ -2153,14 +2171,14 @@ open func read()async throws  -> Data  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_reader_read(
+                uniffi_sia_storage_ffi_fn_method_reader_read(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterData.lift,
             errorHandler: FfiConverterTypeIOError_lift
         )
@@ -2230,7 +2248,7 @@ fileprivate struct UniffiCallbackInterfaceReader {
 }
 
 private func uniffiCallbackInitReader() {
-    uniffi_indexd_ffi_fn_init_callback_vtable_reader(UniffiCallbackInterfaceReader.vtable)
+    uniffi_sia_storage_ffi_fn_init_callback_vtable_reader(UniffiCallbackInterfaceReader.vtable)
 }
 
 
@@ -2432,7 +2450,7 @@ open class Sdk: SdkProtocol, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_sdk(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_sdk(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -2441,7 +2459,7 @@ open class Sdk: SdkProtocol, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_sdk(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_sdk(pointer, $0) }
     }
 
     
@@ -2454,14 +2472,14 @@ open func account()async throws  -> Account  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_account(
+                uniffi_sia_storage_ffi_fn_method_sdk_account(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeAccount_lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2476,7 +2494,7 @@ open func account()async throws  -> Account  {
      */
 open func appKey() -> AppKey  {
     return try!  FfiConverterTypeAppKey_lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_method_sdk_app_key(self.uniffiClonePointer(),$0
+    uniffi_sia_storage_ffi_fn_method_sdk_app_key(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -2488,14 +2506,14 @@ open func deleteObject(key: String)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_delete_object(
+                uniffi_sia_storage_ffi_fn_method_sdk_delete_object(
                     self.uniffiClonePointer(),
                     FfiConverterString.lower(key)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2508,14 +2526,14 @@ open func download(w: Writer, object: PinnedObject, options: DownloadOptions)asy
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_download(
+                uniffi_sia_storage_ffi_fn_method_sdk_download(
                     self.uniffiClonePointer(),
                     FfiConverterTypeWriter_lower(w),FfiConverterTypePinnedObject_lower(object),FfiConverterTypeDownloadOptions_lower(options)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeDownloadError_lift
         )
@@ -2528,14 +2546,14 @@ open func hosts()async throws  -> [Host]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_hosts(
+                uniffi_sia_storage_ffi_fn_method_sdk_hosts(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeHost.lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2548,14 +2566,14 @@ open func object(key: String)async throws  -> PinnedObject  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_object(
+                uniffi_sia_storage_ffi_fn_method_sdk_object(
                     self.uniffiClonePointer(),
                     FfiConverterString.lower(key)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2574,14 +2592,14 @@ open func objectEvents(cursor: ObjectsCursor?, limit: UInt32)async throws  -> [O
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_object_events(
+                uniffi_sia_storage_ffi_fn_method_sdk_object_events(
                     self.uniffiClonePointer(),
                     FfiConverterOptionTypeObjectsCursor.lower(cursor),FfiConverterUInt32.lower(limit)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeObjectEvent.lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2594,14 +2612,14 @@ open func pinObject(object: PinnedObject)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_pin_object(
+                uniffi_sia_storage_ffi_fn_method_sdk_pin_object(
                     self.uniffiClonePointer(),
                     FfiConverterTypePinnedObject_lower(object)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2614,14 +2632,14 @@ open func pruneSlabs()async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_prune_slabs(
+                uniffi_sia_storage_ffi_fn_method_sdk_prune_slabs(
                     self.uniffiClonePointer()
                     
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2633,7 +2651,7 @@ open func pruneSlabs()async throws   {
      */
 open func shareObject(object: PinnedObject, validUntil: Date)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeError_lift) {
-    uniffi_indexd_ffi_fn_method_sdk_share_object(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_sdk_share_object(self.uniffiClonePointer(),
         FfiConverterTypePinnedObject_lower(object),
         FfiConverterTimestamp.lower(validUntil),$0
     )
@@ -2647,14 +2665,14 @@ open func sharedObject(sharedUrl: String)async throws  -> PinnedObject  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_shared_object(
+                uniffi_sia_storage_ffi_fn_method_sdk_shared_object(
                     self.uniffiClonePointer(),
                     FfiConverterString.lower(sharedUrl)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2667,14 +2685,14 @@ open func slab(slabId: String)async throws  -> PinnedSlab  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_slab(
+                uniffi_sia_storage_ffi_fn_method_sdk_slab(
                     self.uniffiClonePointer(),
                     FfiConverterString.lower(slabId)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_rust_buffer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypePinnedSlab_lift,
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2688,14 +2706,14 @@ open func updateObjectMetadata(object: PinnedObject)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_update_object_metadata(
+                uniffi_sia_storage_ffi_fn_method_sdk_update_object_metadata(
                     self.uniffiClonePointer(),
                     FfiConverterTypePinnedObject_lower(object)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeError_lift
         )
@@ -2714,14 +2732,14 @@ open func upload(r: Reader, options: UploadOptions)async throws  -> PinnedObject
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_upload(
+                uniffi_sia_storage_ffi_fn_method_sdk_upload(
                     self.uniffiClonePointer(),
                     FfiConverterTypeReader_lower(r),FfiConverterTypeUploadOptions_lower(options)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeUploadError_lift
         )
@@ -2741,14 +2759,14 @@ open func uploadPacked(options: UploadOptions)async  -> PackedUpload  {
     return
         try!  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_sdk_upload_packed(
+                uniffi_sia_storage_ffi_fn_method_sdk_upload_packed(
                     self.uniffiClonePointer(),
                     FfiConverterTypeUploadOptions_lower(options)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_indexd_ffi_rust_future_free_pointer,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_pointer,
             liftFunc: FfiConverterTypePackedUpload_lift,
             errorHandler: nil
             
@@ -2855,7 +2873,7 @@ open class UploadProgressCallbackImpl: UploadProgressCallback, @unchecked Sendab
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_uploadprogresscallback(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_uploadprogresscallback(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -2864,14 +2882,14 @@ open class UploadProgressCallbackImpl: UploadProgressCallback, @unchecked Sendab
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_uploadprogresscallback(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_uploadprogresscallback(pointer, $0) }
     }
 
     
 
     
 open func progress(uploaded: UInt64, encodedSize: UInt64)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_method_uploadprogresscallback_progress(self.uniffiClonePointer(),
+    uniffi_sia_storage_ffi_fn_method_uploadprogresscallback_progress(self.uniffiClonePointer(),
         FfiConverterUInt64.lower(uploaded),
         FfiConverterUInt64.lower(encodedSize),$0
     )
@@ -2927,7 +2945,7 @@ fileprivate struct UniffiCallbackInterfaceUploadProgressCallback {
 }
 
 private func uniffiCallbackInitUploadProgressCallback() {
-    uniffi_indexd_ffi_fn_init_callback_vtable_uploadprogresscallback(UniffiCallbackInterfaceUploadProgressCallback.vtable)
+    uniffi_sia_storage_ffi_fn_init_callback_vtable_uploadprogresscallback(UniffiCallbackInterfaceUploadProgressCallback.vtable)
 }
 
 
@@ -3041,7 +3059,7 @@ open class WriterImpl: Writer, @unchecked Sendable {
     @_documentation(visibility: private)
 #endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_indexd_ffi_fn_clone_writer(self.pointer, $0) }
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_writer(self.pointer, $0) }
     }
     // No primary constructor declared for this class.
 
@@ -3050,7 +3068,7 @@ open class WriterImpl: Writer, @unchecked Sendable {
             return
         }
 
-        try! rustCall { uniffi_indexd_ffi_fn_free_writer(pointer, $0) }
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_writer(pointer, $0) }
     }
 
     
@@ -3060,14 +3078,14 @@ open func write(data: Data)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_indexd_ffi_fn_method_writer_write(
+                uniffi_sia_storage_ffi_fn_method_writer_write(
                     self.uniffiClonePointer(),
                     FfiConverterData.lower(data)
                 )
             },
-            pollFunc: ffi_indexd_ffi_rust_future_poll_void,
-            completeFunc: ffi_indexd_ffi_rust_future_complete_void,
-            freeFunc: ffi_indexd_ffi_rust_future_free_void,
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeIOError_lift
         )
@@ -3137,7 +3155,7 @@ fileprivate struct UniffiCallbackInterfaceWriter {
 }
 
 private func uniffiCallbackInitWriter() {
-    uniffi_indexd_ffi_fn_init_callback_vtable_writer(UniffiCallbackInterfaceWriter.vtable)
+    uniffi_sia_storage_ffi_fn_init_callback_vtable_writer(UniffiCallbackInterfaceWriter.vtable)
 }
 
 
@@ -3226,7 +3244,22 @@ public struct Account {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(accountKey: String, maxPinnedData: UInt64, pinnedData: UInt64, pinnedSize: UInt64, ready: Bool, app: App, lastUsed: Date) {
+    public init(accountKey: String, 
+        /**
+         * The maximum amount of data that can be pinned to the indexer for this account.
+         */maxPinnedData: UInt64, 
+        /**
+         * The amount of data currently pinned to the indexer for this account. This
+         * counts towards max pinned data.
+         */pinnedData: UInt64, 
+        /**
+         * The amount of data after erasure encoding. This is the actual amount of data on the network.
+         */pinnedSize: UInt64, 
+        /**
+         * Whether the account is ready to be used. After registering an app, the account may not be
+         * immediately ready as the indexer needs to process the registration and sync with the network.
+         * The account will become ready once it has propagated on the network.
+         */ready: Bool, app: App, lastUsed: Date) {
         self.accountKey = accountKey
         self.maxPinnedData = maxPinnedData
         self.pinnedData = pinnedData
@@ -3291,8 +3324,8 @@ public struct FfiConverterTypeAccount: FfiConverterRustBuffer {
                 accountKey: FfiConverterString.read(from: &buf), 
                 maxPinnedData: FfiConverterUInt64.read(from: &buf), 
                 pinnedData: FfiConverterUInt64.read(from: &buf), 
-                pinnedSize: FfiConverterUInt64.read(from: &buf),
-                ready: FfiConverterBool.read(from: &buf),
+                pinnedSize: FfiConverterUInt64.read(from: &buf), 
+                ready: FfiConverterBool.read(from: &buf), 
                 app: FfiConverterTypeApp.read(from: &buf), 
                 lastUsed: FfiConverterTimestamp.read(from: &buf)
         )
@@ -3387,7 +3420,7 @@ public struct FfiConverterTypeApp: FfiConverterRustBuffer {
         return
             try App(
                 id: FfiConverterString.read(from: &buf), 
-                name: FfiConverterString.read(from: &buf),
+                name: FfiConverterString.read(from: &buf), 
                 description: FfiConverterString.read(from: &buf), 
                 serviceUrl: FfiConverterOptionString.read(from: &buf), 
                 logoUrl: FfiConverterOptionString.read(from: &buf)
@@ -5687,7 +5720,7 @@ fileprivate func uniffiRustCallAsync<F, T>(
 ) async throws -> T {
     // Make sure to call the ensure init function since future creation doesn't have a
     // RustCallStatus param, so doesn't use makeRustCall()
-    uniffiEnsureIndexdFfiInitialized()
+    uniffiEnsureSiaStorageFfiInitialized()
     let rustFuture = rustFutureFunc()
     defer {
         freeFunc(rustFuture)
@@ -5781,7 +5814,7 @@ private func uniffiForeignFutureFree(handle: UInt64) {
 }
 
 // For testing
-public func uniffiForeignFutureHandleCountIndexdFfi() -> Int {
+public func uniffiForeignFutureHandleCountSiaStorageFfi() -> Int {
     UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
 }
 /**
@@ -5789,7 +5822,7 @@ public func uniffiForeignFutureHandleCountIndexdFfi() -> Int {
  */
 public func encodedSize(size: UInt64, dataShards: UInt8, parityShards: UInt8) -> UInt64  {
     return try!  FfiConverterUInt64.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_func_encoded_size(
+    uniffi_sia_storage_ffi_fn_func_encoded_size(
         FfiConverterUInt64.lower(size),
         FfiConverterUInt8.lower(dataShards),
         FfiConverterUInt8.lower(parityShards),$0
@@ -5801,7 +5834,7 @@ public func encodedSize(size: UInt64, dataShards: UInt8, parityShards: UInt8) ->
  */
 public func generateRecoveryPhrase() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_indexd_ffi_fn_func_generate_recovery_phrase($0
+    uniffi_sia_storage_ffi_fn_func_generate_recovery_phrase($0
     )
 })
 }
@@ -5809,7 +5842,7 @@ public func generateRecoveryPhrase() -> String  {
  * Sets a foreign logger to receive log messages from the SDK.
  */
 public func setLogger(logger: Logger, level: String)  {try! rustCall() {
-    uniffi_indexd_ffi_fn_func_set_logger(
+    uniffi_sia_storage_ffi_fn_func_set_logger(
         FfiConverterTypeLogger_lower(logger),
         FfiConverterString.lower(level),$0
     )
@@ -5819,7 +5852,7 @@ public func setLogger(logger: Logger, level: String)  {try! rustCall() {
  * Validates a BIP-39 recovery phrase.
  */
 public func validateRecoveryPhrase(phrase: String)throws   {try rustCallWithError(FfiConverterTypeSeedError_lift) {
-    uniffi_indexd_ffi_fn_func_validate_recovery_phrase(
+    uniffi_sia_storage_ffi_fn_func_validate_recovery_phrase(
         FfiConverterString.lower(phrase),$0
     )
 }
@@ -5836,170 +5869,173 @@ private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
     let bindings_contract_version = 29
     // Get the scaffolding contract version by calling the into the dylib
-    let scaffolding_contract_version = ffi_indexd_ffi_uniffi_contract_version()
+    let scaffolding_contract_version = ffi_sia_storage_ffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_indexd_ffi_checksum_func_encoded_size() != 51818) {
+    if (uniffi_sia_storage_ffi_checksum_func_encoded_size() != 52940) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_func_generate_recovery_phrase() != 3495) {
+    if (uniffi_sia_storage_ffi_checksum_func_generate_recovery_phrase() != 17079) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_func_set_logger() != 36651) {
+    if (uniffi_sia_storage_ffi_checksum_func_set_logger() != 54943) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_func_validate_recovery_phrase() != 30126) {
+    if (uniffi_sia_storage_ffi_checksum_func_validate_recovery_phrase() != 30960) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_appkey_export() != 242) {
+    if (uniffi_sia_storage_ffi_checksum_method_appkey_export() != 24598) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_appkey_public_key() != 45376) {
+    if (uniffi_sia_storage_ffi_checksum_method_appkey_public_key() != 38975) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_appkey_sign() != 33860) {
+    if (uniffi_sia_storage_ffi_checksum_method_appkey_sign() != 52750) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_appkey_verify_signature() != 47305) {
+    if (uniffi_sia_storage_ffi_checksum_method_appkey_verify_signature() != 36138) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_builder_connected() != 18532) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_connected() != 5228) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_builder_register() != 34757) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_register() != 44466) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_builder_request_connection() != 7746) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_request_connection() != 21418) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_builder_response_url() != 18056) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_response_url() != 25755) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_builder_wait_for_approval() != 43963) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_wait_for_approval() != 41911) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_encryptionkey_export() != 1252) {
+    if (uniffi_sia_storage_ffi_checksum_method_encryptionkey_export() != 55142) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_logger_info() != 54729) {
+    if (uniffi_sia_storage_ffi_checksum_method_logger_info() != 29952) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_logger_warn() != 48239) {
+    if (uniffi_sia_storage_ffi_checksum_method_logger_warn() != 21484) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_logger_error() != 23088) {
+    if (uniffi_sia_storage_ffi_checksum_method_logger_error() != 32250) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_logger_debug() != 42085) {
+    if (uniffi_sia_storage_ffi_checksum_method_logger_debug() != 12899) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_add() != 36669) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_add() != 56923) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_cancel() != 9235) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_cancel() != 48516) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_finalize() != 9491) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_finalize() != 48196) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_length() != 46437) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_length() != 7379) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_remaining() != 60139) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_remaining() != 11061) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_packedupload_slabs() != 54392) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_slabs() != 22197) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_created_at() != 22273) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_created_at() != 6326) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_id() != 62787) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_encoded_size() != 12774) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_metadata() != 60113) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_id() != 8920) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_seal() != 13608) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_metadata() != 44967) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_size() != 48206) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_seal() != 60135) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_slabs() != 21596) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_size() != 18457) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_update_metadata() != 65197) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_slabs() != 33285) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_pinnedobject_updated_at() != 1712) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_update_metadata() != 21836) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_reader_read() != 8865) {
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_updated_at() != 809) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_account() != 50707) {
+    if (uniffi_sia_storage_ffi_checksum_method_reader_read() != 5194) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_app_key() != 63583) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_account() != 38884) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_delete_object() != 39351) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_app_key() != 15786) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_download() != 54684) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_delete_object() != 7770) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_hosts() != 11119) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_download() != 21214) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_object() != 24221) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_hosts() != 58439) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_object_events() != 7322) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_object() != 45366) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_pin_object() != 26709) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_object_events() != 13324) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_prune_slabs() != 23027) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_pin_object() != 21075) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_share_object() != 18462) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_prune_slabs() != 650) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_shared_object() != 51661) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_share_object() != 15045) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_slab() != 48470) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_shared_object() != 14692) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_update_object_metadata() != 31500) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_slab() != 21389) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_upload() != 42177) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_update_object_metadata() != 7918) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_sdk_upload_packed() != 58097) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload() != 61988) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_uploadprogresscallback_progress() != 10119) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 52625) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_method_writer_write() != 5185) {
+    if (uniffi_sia_storage_ffi_checksum_method_uploadprogresscallback_progress() != 2376) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_constructor_appkey_new() != 62590) {
+    if (uniffi_sia_storage_ffi_checksum_method_writer_write() != 12585) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_constructor_builder_new() != 27078) {
+    if (uniffi_sia_storage_ffi_checksum_constructor_appkey_new() != 1053) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_constructor_encryptionkey_parse() != 42073) {
+    if (uniffi_sia_storage_ffi_checksum_constructor_builder_new() != 8357) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_indexd_ffi_checksum_constructor_pinnedobject_open() != 56501) {
+    if (uniffi_sia_storage_ffi_checksum_constructor_encryptionkey_parse() != 31248) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_pinnedobject_open() != 62198) {
         return InitializationResult.apiChecksumMismatch
     }
 
@@ -6012,7 +6048,7 @@ private let initializationResult: InitializationResult = {
 
 // Make the ensure init function public so that other modules which have external type references to
 // our types can call it.
-public func uniffiEnsureIndexdFfiInitialized() {
+public func uniffiEnsureSiaStorageFfiInitialized() {
     switch initializationResult {
     case .ok:
         break

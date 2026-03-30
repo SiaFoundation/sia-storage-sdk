@@ -8,7 +8,7 @@ repositories {
 }
 
 dependencies {
-    implementation(files("../../kotlin/build/libs/siaindexd-${property("version")}.jar"))
+    implementation(files("../../kotlin/build/libs/siastoragesdk-${property("version")}.jar"))
     implementation("net.java.dev.jna:jna:5.16.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
 }

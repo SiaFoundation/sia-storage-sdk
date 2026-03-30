@@ -34,11 +34,11 @@ java {
 publishing {
     publications {
         create<MavenPublication>("maven") {
-            artifactId = "siaindexd"
+            artifactId = "siastoragesdk"
             from(components["java"])
 
             pom {
-                name.set("siaindexd")
+                name.set("siastoragesdk")
                 description.set("Kotlin SDK for interacting with the Sia decentralized storage network")
                 url.set("https://github.com/SiaFoundation/indexd-sdk")
 

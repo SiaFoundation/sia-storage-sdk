@@ -14,18 +14,16 @@ fun main() = runBlocking {
 
     val appId = ByteArray(32) { 0x01 }
 
-    val builder = Builder("https://app.sia.storage")
+    val builder = Builder("https://app.sia.storage", AppMeta(
+        id = appId,
+        name = "kotlin example",
+        description = "an example app",
+        serviceUrl = "https://example.com",
+        logoUrl = null,
+        callbackUrl = null,
+    ))
 
-    builder.requestConnection(
-        AppMeta(
-            id = appId,
-            name = "kotlin example",
-            description = "an example app",
-            serviceUrl = "https://example.com",
-            logoUrl = null,
-            callbackUrl = null,
-        )
-    )
+    builder.requestConnection()
 
     println("Please approve connection ${builder.responseUrl()}")
     builder.waitForApproval()

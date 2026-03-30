@@ -1,1 +1,1 @@
-rootProject.name = "siaindexd"
+rootProject.name = "siastoragesdk"

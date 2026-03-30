@@ -1,9 +1,10 @@
 import asyncio
+from base64 import b64encode
 from sys import stdin
 from datetime import datetime, timezone
 from io import BytesIO
 
-from sia_indexd import (
+from sia_storage_sdk import (
     generate_recovery_phrase,
     AppMeta,
     Builder,
@@ -40,9 +41,8 @@ set_logger(PrintLogger(), "debug")
 async def main():
     app_id = b"\x01" * 32
 
-    builder = Builder("https://app.sia.storage")
-
-    await builder.request_connection(
+    builder = Builder(
+        "https://app.sia.storage",
         AppMeta(
             id=app_id,
             name="python example",
@@ -50,8 +50,9 @@ async def main():
             service_url="https://example.com",
             logo_url=None,
             callback_url=None,
-        )
+        ),
     )
+    await builder.request_connection()
 
     print(f"Please approve connection {builder.response_url()}")
     await builder.wait_for_approval()
@@ -66,9 +67,9 @@ async def main():
 
     # Store the app key for later use
     app_key = sdk.app_key()
-    print("App registered", app_key.export())
+    print("App registered:", b64encode(app_key.export()).decode())
 
-    print("Connected to indexd")
+    print("Connected to indexer")
 
     start = datetime.now(timezone.utc)
     upload = await sdk.upload_packed(UploadOptions())
@@ -77,7 +78,7 @@ async def main():
         data = f"hello, world {i}!"
         reader = BytesReader(BytesIO(data.encode()))
         size = await upload.add(reader)
-        rem = await upload.remaining()
+        rem = upload.remaining()
         print(f"upload {i} added {size} bytes ({rem} remaining)")
 
     objects = await upload.finalize()

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build XCFramework and Swift package for IndexdSDK
+# Build XCFramework and Swift package for SiaStorageSDK
 #
 # Prerequisites:
 #   rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios \
@@ -13,10 +13,10 @@ set -euo pipefail
 SWIFT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SWIFT_DIR/.." && pwd)"
 
-PACKAGE="indexd-sdk"
-LIB="libindexd_ffi"
-FFI_MODULE="IndexdSDKFFI"
-SWIFT_MODULE="IndexdSDK"
+PACKAGE="sia-storage-sdk"
+LIB="libsia_storage_ffi"
+FFI_MODULE="SiaStorageSDKFFI"
+SWIFT_MODULE="SiaStorageSDK"
 
 BUILD_DIR="$REPO_ROOT/build"
 GEN_DIR="$REPO_ROOT/build/generated"
@@ -96,4 +96,4 @@ echo "Distribution zip: $BUILD_DIR/${FFI_MODULE}.xcframework.zip"
 echo "Checksum: $CHECKSUM"
 echo ""
 echo "To use locally:"
-echo "  INDEXD_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build"
+echo "  SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build"

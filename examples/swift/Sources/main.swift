@@ -1,5 +1,5 @@
 import Foundation
-import IndexdSDK
+import SiaStorageSDK
 
 // MARK: - Logger Implementation
 
@@ -69,7 +69,7 @@ final class BytesWriter: Writer, @unchecked Sendable {
 // MARK: - Main
 
 @main
-struct IndexdSDKExample {
+struct SiaStorageSDKExample {
     static func main() async {
         // Set up logging
         setLogger(logger: PrintLogger(), level: "debug")
@@ -78,8 +78,7 @@ struct IndexdSDKExample {
         let indexerUrl = ProcessInfo.processInfo.environment["SIA_INDEXER_URL"] ?? "https://app.sia.storage"
 
         do {
-            let builder = try await Builder(indexerUrl: indexerUrl)
-                .requestConnection(meta: AppMeta(
+            let builder = try await Builder(indexerUrl: indexerUrl, appMeta: AppMeta(
                 id: appId,
                 name: "swift example",
                 description: "an example app",
@@ -87,6 +86,7 @@ struct IndexdSDKExample {
                 logoUrl: nil,
                 callbackUrl: nil
             ))
+                .requestConnection()
 
             let responseUrl = try builder.responseUrl()
             print("Please approve connection: \(responseUrl)")
@@ -120,7 +120,7 @@ struct IndexdSDKExample {
                 let data = "hello, world \(i)!".data(using: .utf8)!
                 let reader = BytesReader(data: data)
                 let size = try await upload.add(reader: reader)
-                let remaining = try await upload.remaining()
+                let remaining = upload.remaining()
                 print("upload \(i) added \(size) bytes (\(remaining) remaining)")
             }
 

@@ -30,23 +30,23 @@ jobs:
           # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            lib: libindexd_ffi.so
+            lib: libsia_storage_ffi.so
           # Linux aarch64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            lib: libindexd_ffi.so
+            lib: libsia_storage_ffi.so
           # macOS x86_64
           - os: macos-15-intel
             target: x86_64-apple-darwin
-            lib: libindexd_ffi.dylib
+            lib: libsia_storage_ffi.dylib
           # macOS ARM64
           - os: macos-14
             target: aarch64-apple-darwin
-            lib: libindexd_ffi.dylib
+            lib: libsia_storage_ffi.dylib
           # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            lib: indexd_ffi.dll
+            lib: sia_storage_ffi.dll
 
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
         run: cargo build --release
 
       - name: Generate Kotlin bindings
-        run: cargo run --bin uniffi-bindgen generate --library target/release/libindexd_ffi.so --language kotlin --out-dir bindings --config kotlin/uniffi.toml --no-format
+        run: cargo run --bin uniffi-bindgen generate --library target/release/libsia_storage_ffi.so --language kotlin --out-dir bindings --config kotlin/uniffi.toml --no-format
 
       - name: Upload bindings
         uses: actions/upload-artifact@v4
@@ -207,7 +207,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jar
-          path: kotlin/build/libs/siaindexd-*.jar
+          path: kotlin/build/libs/siastoragesdk-*.jar
 
   publish:
     name: Publish to Maven Central

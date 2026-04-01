@@ -5,10 +5,6 @@ import {
   generate_recovery_phrase,
   set_logger,
   Builder,
-  BufferReader,
-  BufferWriter,
-  uploadBytes,
-  downloadBytes,
 } from "sia-storage-sdk";
 
 // Set up logging
@@ -61,17 +57,20 @@ async function main() {
   console.log("Connected to indexer");
 
   let start = Date.now();
-  const upload = await sdk.upload_packed({
-    max_inflight: 10,
-    data_shards: 10,
-    parity_shards: 20,
-    progress_callback: undefined,
-  });
+  const obj = await sdk.upload(Buffer.from("hello from upload()!"));
+  console.log(`Uploaded ${obj.size()} bytes with upload() in ${Date.now() - start}ms`);
+
+  start = Date.now();
+  const data = await sdk.download(obj);
+  console.log(`Downloaded with download(): ${JSON.stringify(data.toString())} in ${Date.now() - start}ms`);
+
+  console.log("\nUpload Packing Example...");
+
+  start = Date.now();
+  const upload = await sdk.upload_packed();
 
   for (let i = 0; i < 10; i++) {
-    const data = Buffer.from(`hello, world ${i}!`);
-    const reader = new BufferReader(data);
-    const size = await upload.add(reader);
+    const size = await upload.add(Buffer.from(`hello, world ${i}!`));
     const rem = upload.remaining();
     console.log(`upload ${i} added ${size} bytes (${rem} remaining)`);
   }
@@ -83,25 +82,11 @@ async function main() {
   start = Date.now();
   const lastObj = objects[objects.length - 1];
   console.log(`Downloading object ${lastObj.id()} ${lastObj.size()} bytes`);
-  const writer = new BufferWriter();
-  await sdk.download(writer, lastObj, {
-    max_inflight: 10,
-    offset: 0n,
-    length: undefined,
-  });
+  const downloaded = await sdk.download(lastObj);
   elapsed = Date.now() - start;
   console.log(
-    `Downloaded object ${lastObj.id()} with ${writer.toBuffer().length} bytes in ${elapsed}ms`,
+    `Downloaded object ${lastObj.id()} with ${downloaded.length} bytes in ${elapsed}ms`,
   );
-
-  // Convenience functions for simple cases
-  console.log("\nConvenience function examples...");
-
-  const obj = await uploadBytes(sdk, Buffer.from("hello from uploadBytes!"));
-  console.log(`Uploaded ${obj.size()} bytes with uploadBytes()`);
-
-  const downloaded = await downloadBytes(sdk, obj);
-  console.log(`Downloaded with downloadBytes(): ${JSON.stringify(downloaded.toString())}`);
 }
 
 main().catch((err) => {

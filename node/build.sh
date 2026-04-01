@@ -62,14 +62,15 @@ if [ "$BUNDLED_PREBUILDS" = false ]; then
     cp "$LIB_PATH" "$OUT_DIR/"
 fi
 
-# Copy hand-written wrappers and patch index files
+# Copy hand-written wrappers and generate index files
 cp "$NODE_DIR/wrappers.js" "$OUT_DIR/wrappers.js"
 cp "$NODE_DIR/wrappers.d.ts" "$OUT_DIR/wrappers.d.ts"
 
-# Append wrapper re-exports to index files
-WRAPPER_EXPORT='export { BufferReader, BufferWriter, uploadBytes, downloadBytes } from "./wrappers.js";'
-echo "$WRAPPER_EXPORT" >> "$OUT_DIR/index.js"
-echo "$WRAPPER_EXPORT" >> "$OUT_DIR/index.d.ts"
+# Wrapper classes override the generated Builder, SDK, and PackedUpload
+INDEX='export { Builder, SDK, PackedUpload } from "./wrappers.js";
+export * from "./sia_storage_ffi.js";'
+echo "$INDEX" > "$OUT_DIR/index.js"
+echo "$INDEX" > "$OUT_DIR/index.d.ts"
 
 # Install dependencies
 cd "$OUT_DIR"

@@ -164,17 +164,11 @@ jobs:
         run: |
           cd test-project
           node --input-type=module -e "
-            import { generate_recovery_phrase, validate_recovery_phrase, SDK, Builder, BufferReader, BufferWriter } from 'sia-storage-sdk';
+            import { generate_recovery_phrase, validate_recovery_phrase, SDK, Builder } from 'sia-storage-sdk';
             console.log('Import successful');
             const phrase = generate_recovery_phrase();
             validate_recovery_phrase(phrase);
             console.log('Recovery phrase:', phrase.substring(0, 20) + '...');
-            const reader = new BufferReader(Buffer.from('test'));
-            const chunk = await reader.read();
-            console.log('BufferReader:', Buffer.from(chunk).toString());
-            const writer = new BufferWriter();
-            await writer.write(new Uint8Array([1, 2, 3]));
-            console.log('BufferWriter length:', writer.toBuffer().length);
             console.log('All tests passed');
           "
 

@@ -16,23 +16,7 @@ npm install sia-storage-sdk
 ## Example
 
 ```javascript
-import {
-  generate_recovery_phrase,
-  set_logger,
-  Builder,
-  BufferReader,
-  BufferWriter,
-  uploadBytes,
-  downloadBytes,
-} from "sia-storage-sdk";
-
-// Set up logging
-set_logger({
-  debug(msg) { console.log("DEBUG", msg); },
-  info(msg) { console.log("INFO", msg); },
-  warn(msg) { console.log("WARNING", msg); },
-  error(msg) { console.log("ERROR", msg); },
-}, "debug");
+import { generate_recovery_phrase, Builder } from "sia-storage-sdk";
 
 // Create a builder and connect
 const builder = new Builder("https://app.sia.storage", {
@@ -44,8 +28,6 @@ const builder = new Builder("https://app.sia.storage", {
   callback_url: undefined,
 });
 await builder.request_connection();
-
-// Wait for user approval
 await builder.wait_for_approval();
 
 // Register with a recovery phrase
@@ -53,31 +35,14 @@ const mnemonic = generate_recovery_phrase();
 const sdk = await builder.register(mnemonic);
 
 // Upload data
-const upload = await sdk.upload_packed({
-  max_inflight: 10,
-  data_shards: 10,
-  parity_shards: 20,
-  progress_callback: undefined,
-});
-const reader = new BufferReader(Buffer.from("hello, world!"));
-await upload.add(reader);
-const objects = await upload.finalize();
+const obj = await sdk.upload(Buffer.from("hello, world!"));
 
 // Download data
-const writer = new BufferWriter();
-await sdk.download(writer, objects[0], {
-  max_inflight: 10,
-  offset: 0n,
-  length: undefined,
-});
-
-// Or use convenience functions
-const obj = await uploadBytes(sdk, Buffer.from("hello!"));
-const data = await downloadBytes(sdk, obj);
+const data = await sdk.download(obj);
 ```
 
-`BufferReader` and `BufferWriter` are provided by the SDK. For custom streaming,
-implement the `Reader` and `Writer` interfaces directly.
+For custom streaming, implement the `Reader` and `Writer` interfaces
+and use the raw FFI SDK directly.
 
 A complete working example is available in [examples/node/](../examples/node/).
 

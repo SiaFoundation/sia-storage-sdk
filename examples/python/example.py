@@ -67,8 +67,7 @@ async def main():
 
     start = datetime.now(timezone.utc)
     obj = await sdk.upload(BytesIO(b"hello from upload()!"))
-    await sdk.pin_object(obj)
-    print(f"Uploaded and pinned {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
+    print(f"Uploaded {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
 
     data = BytesIO()
     start = datetime.now(timezone.utc)

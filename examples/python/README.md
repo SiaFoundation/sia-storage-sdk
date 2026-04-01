@@ -5,7 +5,7 @@ Python SDK for interacting with the Sia decentralized storage network.
 ## Installation
 
 ```bash
-pip install sia-storage-sdk
+pip install sia_storage
 ```
 
 ### Building from source
@@ -25,7 +25,3 @@ maturin develop
 ```bash
 python3 ./examples/python/example.py
 ```
-
-## Async Support
-
-This SDK uses async/await for all network operations. Make sure to call `uniffi_set_event_loop` before making any async calls.

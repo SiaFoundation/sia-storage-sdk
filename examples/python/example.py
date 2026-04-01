@@ -4,7 +4,7 @@ from sys import stdin
 from datetime import datetime, timezone
 from io import BytesIO
 
-from sia_storage_sdk import (
+from sia_storage import (
     generate_recovery_phrase,
     AppMeta,
     Builder,
@@ -12,12 +12,6 @@ from sia_storage_sdk import (
     DownloadOptions,
     set_logger,
     Logger,
-    # Wrappers for standard Python file-like objects
-    BytesReader,
-    BytesWriter,
-    # Convenience functions for simple upload/download
-    upload_bytes,
-    download_bytes,
 )
 
 
@@ -50,7 +44,7 @@ async def main():
             service_url="https://example.com",
             logo_url=None,
             callback_url=None,
-        ),
+        )
     )
     await builder.request_connection()
 
@@ -76,8 +70,7 @@ async def main():
 
     for i in range(10):
         data = f"hello, world {i}!"
-        reader = BytesReader(BytesIO(data.encode()))
-        size = await upload.add(reader)
+        size = await upload.add(BytesIO(data.encode()))
         rem = upload.remaining()
         print(f"upload {i} added {size} bytes ({rem} remaining)")
 
@@ -87,22 +80,21 @@ async def main():
 
     start = datetime.now(timezone.utc)
     buffer = BytesIO()
-    writer = BytesWriter(buffer)
     print(f"Downloading object {objects[-1].id()} {objects[-1].size()} bytes")
-    await sdk.download(writer, objects[-1], DownloadOptions())
+    await sdk.download(buffer, objects[-1], DownloadOptions())
     elapsed = datetime.now(timezone.utc) - start
     print(
         f"Downloaded object {objects[-1].id()} with {len(buffer.getvalue())} bytes in {elapsed}"
     )
 
-    # Convenience functions for simple cases
     print("\nConvenience function examples...")
 
-    obj = await upload_bytes(sdk, b"hello from upload_bytes!")
-    print(f"Uploaded {obj.size()} bytes with upload_bytes()")
+    obj = await sdk.upload(BytesIO(b"hello from upload()!"))
+    print(f"Uploaded {obj.size()} bytes with upload()")
 
-    data = await download_bytes(sdk, obj)
-    print(f"Downloaded with download_bytes(): {data.decode()!r}")
+    data = BytesIO()
+    await sdk.download(data, obj)
+    print(f"Downloaded with download(): {data.getvalue().decode()!r}")
 
 
 asyncio.run(main())

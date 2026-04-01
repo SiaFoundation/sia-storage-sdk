@@ -139,7 +139,7 @@ jobs:
     if: github.event.inputs.publish == 'true'
     environment:
       name: pypi
-      url: https://pypi.org/project/sia-storage-sdk/
+      url: https://pypi.org/project/sia_storage/
     permissions:
       id-token: write
     steps:

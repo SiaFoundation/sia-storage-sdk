@@ -8,10 +8,11 @@
 __pycache__/
 *.pyc
 .venv/
+env/
 
 *.so
 *.dylib
-python/sia_storage_sdk/sia_storage_sdk/
+python/sia_storage/sia_storage/
 
 .gradle/
 *.class

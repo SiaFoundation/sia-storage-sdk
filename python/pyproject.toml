@@ -3,7 +3,7 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "sia-storage-sdk"
+name = "sia_storage"
 description = "Python SDK for interacting with the Sia decentralized storage network"
 dynamic = ["version"]
 requires-python = ">=3.9"

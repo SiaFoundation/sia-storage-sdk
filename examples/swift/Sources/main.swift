@@ -128,6 +128,12 @@ struct SiaStorageSDKExample {
             let uploadElapsed = Date().timeIntervalSince(uploadStart)
             print("Upload finished \(objects.count) objects in \(String(format: "%.2f", uploadElapsed))s")
 
+            // Pin each object to the indexer
+            for object in objects {
+                try await sdk.pinObject(object: object)
+                print("Pinned object \(object.id())")
+            }
+
             // Download example
             guard let lastObject = objects.last else {
                 print("No objects were uploaded")

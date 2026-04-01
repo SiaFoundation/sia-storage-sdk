@@ -57,6 +57,12 @@ fun main() = runBlocking {
     var elapsed = System.currentTimeMillis() - start
     println("Upload finished ${objects.size} objects in ${elapsed}ms")
 
+    // Pin each object to the indexer
+    for (obj in objects) {
+        sdk.pinObject(obj)
+        println("Pinned object ${obj.id()}")
+    }
+
     start = System.currentTimeMillis()
     val lastObj = objects.last()
     println("Downloading object ${lastObj.id()} ${lastObj.size()} bytes")
@@ -68,7 +74,8 @@ fun main() = runBlocking {
     println("\nConvenience function examples...")
 
     val obj = sdk.uploadBytes("hello from uploadBytes!".toByteArray())
-    println("Uploaded ${obj.size()} bytes with uploadBytes()")
+    sdk.pinObject(obj)
+    println("Uploaded and pinned ${obj.size()} bytes with uploadBytes()")
 
     val data = sdk.downloadBytes(obj)
     println("Downloaded with downloadBytes(): \"${String(data)}\"")

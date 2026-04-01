@@ -67,7 +67,8 @@ async def main():
 
     start = datetime.now(timezone.utc)
     obj = await sdk.upload(BytesIO(b"hello from upload()!"))
-    print(f"Uploaded {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
+    await sdk.pin_object(obj)
+    print(f"Uploaded and pinned {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
 
     data = BytesIO()
     start = datetime.now(timezone.utc)
@@ -88,6 +89,11 @@ async def main():
     objects = await upload.finalize()
     elapsed = datetime.now(timezone.utc) - start
     print(f"Upload finished {len(objects)} objects in {elapsed}")
+
+    # Pin each object to the indexer
+    for obj in objects:
+        await sdk.pin_object(obj)
+        print(f"Pinned object {obj.id()}")
 
     start = datetime.now(timezone.utc)
     buffer = BytesIO()

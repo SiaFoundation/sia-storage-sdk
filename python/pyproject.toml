@@ -34,6 +34,6 @@ Documentation = "https://github.com/SiaFoundation/sia-storage-sdk"
 [tool.maturin]
 manifest-path = "../Cargo.toml"
 bindings = "uniffi"
-module-name = "sia_storage_sdk"
+module-name = "sia_storage"
 python-source = "."
 compatibility = "manylinux2014"

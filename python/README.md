@@ -11,7 +11,7 @@ Python bindings for Sia Storage, built with Rust and UniFFI.
 ### PyPI
 
 ```sh
-pip install sia-storage-sdk
+pip install sia-storage
 ```
 
 ## Example
@@ -20,7 +20,7 @@ pip install sia-storage-sdk
 import asyncio
 from io import BytesIO
 
-from sia_storage_sdk import (
+from sia_storage import (
     generate_recovery_phrase,
     set_logger,
     AppMeta,

@@ -49,7 +49,7 @@ class Builder(_Builder):
         """
         result = await super().connected(app_key)
         if result is not None:
-            return Sdk(result)
+            return Sdk._from_ffi(result)
         return None
 
     async def register(self, mnemonic: str) -> "Sdk":
@@ -61,7 +61,7 @@ class Builder(_Builder):
         Args:
             mnemonic: The user's mnemonic phrase used to derive the application key.
         """
-        return Sdk(await super().register(mnemonic))
+        return Sdk._from_ffi(await super().register(mnemonic))
 
 
 class Sdk(_Sdk):
@@ -71,10 +71,12 @@ class Sdk(_Sdk):
     download operations.
     """
 
-    def __init__(self, inner: _Sdk):
-        self._pointer = inner._pointer
-        # Clear the pointer on the original to prevent double-free
-        inner._pointer = None
+    def __init__(self, *args, **kwargs):
+        raise ValueError("Use Builder.connected() or Builder.register() to create an SDK instance")
+
+    @classmethod
+    def _from_ffi(cls, inner: _Sdk):
+        return cls._make_instance_(inner._uniffi_clone_pointer())
 
     async def upload(self, r: BinaryIO, options: Optional[UploadOptions] = None) -> PinnedObject:
         """Uploads data to the Sia network and pins it to the indexer.
@@ -101,7 +103,7 @@ class Sdk(_Sdk):
         Returns:
             A PackedUpload that can be used to add objects and finalize the upload.
         """
-        return PackedUpload(await super().upload_packed(options or UploadOptions()))
+        return PackedUpload._from_ffi(await super().upload_packed(options or UploadOptions()))
 
     async def download(self, w: BinaryIO, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> None:
         """Initiates a download of the data referenced by the object.
@@ -121,9 +123,12 @@ class PackedUpload(_PackedUpload):
     of the object is less than the minimum slab size.
     """
 
-    def __init__(self, inner: _PackedUpload):
-        self._pointer = inner._pointer
-        inner._pointer = None
+    def __init__(self, *args, **kwargs):
+        raise ValueError("Use SDK.upload_packed() to create a PackedUpload instance")
+
+    @classmethod
+    def _from_ffi(cls, inner: _PackedUpload):
+        return cls._make_instance_(inner._uniffi_clone_pointer())
 
     async def add(self, reader: BinaryIO) -> int:
         """Adds a new object to the upload.

@@ -1,4 +1,4 @@
-# sia-storage-sdk
+# sia_storage
 
 Python SDK for interacting with the Sia decentralized storage network.
 

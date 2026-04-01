@@ -66,6 +66,17 @@ async def main():
     print("Connected to indexer")
 
     start = datetime.now(timezone.utc)
+    obj = await sdk.upload(BytesIO(b"hello from upload()!"))
+    print(f"Uploaded {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
+
+    data = BytesIO()
+    start = datetime.now(timezone.utc)
+    await sdk.download(data, obj)
+    print(f"Downloaded with download(): {data.getvalue().decode()!r} in {datetime.now(timezone.utc) - start}")
+
+    print("\nUpload Packing Example...")
+    
+    start = datetime.now(timezone.utc)
     upload = await sdk.upload_packed(UploadOptions())
 
     for i in range(10):
@@ -87,14 +98,7 @@ async def main():
         f"Downloaded object {objects[-1].id()} with {len(buffer.getvalue())} bytes in {elapsed}"
     )
 
-    print("\nConvenience function examples...")
 
-    obj = await sdk.upload(BytesIO(b"hello from upload()!"))
-    print(f"Uploaded {obj.size()} bytes with upload()")
-
-    data = BytesIO()
-    await sdk.download(data, obj)
-    print(f"Downloaded with download(): {data.getvalue().decode()!r}")
 
 
 asyncio.run(main())

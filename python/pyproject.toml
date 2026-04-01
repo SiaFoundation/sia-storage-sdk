@@ -3,7 +3,7 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "sia-storage-sdk"
+name = "sia_storage"
 description = "Python SDK for interacting with the Sia decentralized storage network"
 dynamic = ["version"]
 requires-python = ">=3.9"
@@ -34,6 +34,6 @@ Documentation = "https://github.com/SiaFoundation/sia-storage-sdk"
 [tool.maturin]
 manifest-path = "../Cargo.toml"
 bindings = "uniffi"
-module-name = "sia_storage_sdk"
+module-name = "sia_storage"
 python-source = "."
 compatibility = "manylinux2014"

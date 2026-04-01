@@ -13,7 +13,7 @@ set -euo pipefail
 SWIFT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SWIFT_DIR/.." && pwd)"
 
-PACKAGE="sia-storage-sdk"
+PACKAGE="sia_storage_sdk"
 LIB="libsia_storage_ffi"
 FFI_MODULE="SiaStorageSDKFFI"
 SWIFT_MODULE="SiaStorageSDK"

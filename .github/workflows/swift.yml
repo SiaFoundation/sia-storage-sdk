@@ -25,7 +25,7 @@ jobs:
     name: Build XCFramework
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -41,7 +41,7 @@ jobs:
         run: ./swift/build.sh
 
       - name: Upload XCFramework
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: SiaStorageSDKFFI-xcframework
           path: build/SiaStorageSDKFFI.xcframework.zip
@@ -53,7 +53,7 @@ jobs:
           echo "Checksum: $CHECKSUM"
 
       - name: Upload checksum
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: checksum
           path: checksum.txt
@@ -63,10 +63,10 @@ jobs:
     needs: build
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download XCFramework
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: SiaStorageSDKFFI-xcframework
           path: build
@@ -129,16 +129,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download XCFramework
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: SiaStorageSDKFFI-xcframework
           path: dist
 
       - name: Download checksum
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: checksum
           path: dist

@@ -43,7 +43,7 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -64,7 +64,7 @@ jobs:
           CFLAGS_aarch64_unknown_linux_gnu: "-D__ARM_ARCH=8"
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ matrix.target }}
           path: python/dist/*.whl
@@ -73,7 +73,7 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -83,7 +83,7 @@ jobs:
           args: --out dist
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-sdist
           path: python/dist/*.tar.gz
@@ -110,7 +110,7 @@ jobs:
             python: '3.12'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -118,7 +118,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: wheels-${{ matrix.target }}
           path: dist
@@ -144,7 +144,7 @@ jobs:
       id-token: write
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           pattern: wheels-*
           path: dist

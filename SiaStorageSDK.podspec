@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'SiaStorageSDK'
-  s.version          = '0.1.0'
+  s.version          = '0.3.0'
   s.summary          = 'Swift SDK for Sia Storage'
   s.description      = <<-DESC
     SiaStorageSDK provides Swift bindings for interacting with Sia Storage.
@@ -36,7 +36,7 @@ Pod::Spec.new do |s|
 
   s.prepare_command = <<-CMD
     set -euo pipefail
-    VERSION="0.1.0"
+    VERSION="0.3.0"
     BASE_URL="https://github.com/SiaFoundation/sia-storage-sdk/releases/download/v${VERSION}"
 
     # Download the XCFramework and checksum file

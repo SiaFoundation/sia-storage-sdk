@@ -75,7 +75,7 @@ class StreamWriter(
 suspend fun Sdk.uploadBytes(
     data: ByteArray,
     options: UploadOptions = UploadOptions(),
-): PinnedObject = upload(StreamReader(ByteArrayInputStream(data)), options)
+): PinnedObject = upload(PinnedObject(), StreamReader(ByteArrayInputStream(data)), options)
 
 /**
  * Download an object and return its contents as bytes.

@@ -89,7 +89,7 @@ class Sdk(_Sdk):
         Returns:
             An object representing the uploaded data.
         """
-        return await super().upload(BytesReader(r), options or UploadOptions())
+        return await super().upload(PinnedObject(), BytesReader(r), options or UploadOptions())
 
     async def upload_packed(self, options: Optional[UploadOptions] = None) -> "PackedUpload":
         """Creates a new packed upload.

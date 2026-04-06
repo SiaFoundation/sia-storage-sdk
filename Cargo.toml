@@ -12,7 +12,7 @@ name = "sia_storage_ffi"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-upstream_ffi = { package = "sia_storage_ffi", version="0.5.0" }
+sia_storage_ffi = { git = "https://github.com/SiaFoundation/sia-sdk-rs.git", version="0.6.1" }
 uniffi = { version = "=0.29.4", features = ["cli", "tokio"] }
 
 [[bin]]

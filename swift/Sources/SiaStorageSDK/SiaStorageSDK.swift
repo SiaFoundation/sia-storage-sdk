@@ -2398,7 +2398,7 @@ public protocol SdkProtocol: AnyObject, Sendable {
      * # Returns
      * An object representing the uploaded data.
      */
-    func upload(r: Reader, options: UploadOptions) async throws  -> PinnedObject
+    func upload(object: PinnedObject, r: Reader, options: UploadOptions) async throws  -> PinnedObject
     
     /**
      * Creates a new packed upload. This allows multiple objects to be packed together
@@ -2728,13 +2728,13 @@ open func updateObjectMetadata(object: PinnedObject)async throws   {
      * # Returns
      * An object representing the uploaded data.
      */
-open func upload(r: Reader, options: UploadOptions)async throws  -> PinnedObject  {
+open func upload(object: PinnedObject, r: Reader, options: UploadOptions)async throws  -> PinnedObject  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_method_sdk_upload(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeReader_lower(r),FfiConverterTypeUploadOptions_lower(options)
+                    FfiConverterTypePinnedObject_lower(object),FfiConverterTypeReader_lower(r),FfiConverterTypeUploadOptions_lower(options)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_pointer,

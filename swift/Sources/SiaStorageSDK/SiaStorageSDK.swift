@@ -2402,13 +2402,13 @@ public protocol SdkProtocol: AnyObject, Sendable {
     /**
      * Uploads data to the Sia network.
      *
-     * Pass [PinnedObject::new] for new uploads. To resume a previous upload,
+     * Pass a new ``PinnedObject`` for new uploads. To resume a previous upload,
      * pass the object returned from the earlier call. Appending data changes
      * an object's ID. It must be re-pinned afterward and any references to
      * the previous ID must be updated.
      *
      * # Arguments
-     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `object` - The object to upload into. Use ``PinnedObject()`` for new uploads.
      * * `r` - The reader to read the data from.
      * * `options` - The [UploadOptions] to use for the upload.
      *
@@ -2740,13 +2740,13 @@ open func updateObjectMetadata(object: PinnedObject)async throws   {
     /**
      * Uploads data to the Sia network.
      *
-     * Pass [PinnedObject::new] for new uploads. To resume a previous upload,
+     * Pass a new ``PinnedObject`` for new uploads. To resume a previous upload,
      * pass the object returned from the earlier call. Appending data changes
      * an object's ID. It must be re-pinned afterward and any references to
      * the previous ID must be updated.
      *
      * # Arguments
-     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `object` - The object to upload into. Use ``PinnedObject()`` for new uploads.
      * * `r` - The reader to read the data from.
      * * `options` - The [UploadOptions] to use for the upload.
      *

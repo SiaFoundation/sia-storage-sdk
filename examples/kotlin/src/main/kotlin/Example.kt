@@ -73,9 +73,9 @@ fun main() = runBlocking {
     println("Upload finished ${objects.size} objects in ${elapsed}ms")
 
     // Pin each object to the indexer
-    for (pinned in objects) {
-        sdk.pinObject(pinned)
-        println("Pinned object ${pinned.id()}")
+    for (obj in objects) {
+        sdk.pinObject(obj)
+        println("Pinned object ${obj.id()}")
     }
 
     start = System.currentTimeMillis()

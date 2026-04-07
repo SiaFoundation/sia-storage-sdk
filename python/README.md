@@ -33,7 +33,7 @@ from sia_storage import (
 class PrintLogger(Logger):
     def debug(self, msg): print("DEBUG", msg)
     def info(self, msg): print("INFO", msg)
-    def warning(self, msg): print("WARNING", msg)
+    def warn(self, msg): print("WARNING", msg)
     def error(self, msg): print("ERROR", msg)
 
 

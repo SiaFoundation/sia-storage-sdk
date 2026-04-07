@@ -1,6 +1,7 @@
 import kotlinx.coroutines.runBlocking
 import sia.indexd.*
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 
 class PrintLogger : Logger {
     override fun debug(msg: String) = println("DEBUG $msg")
@@ -40,43 +41,47 @@ fun main() = runBlocking {
     val appKey = sdk.appKey()
     println("App registered ${appKey.export()}")
 
-    println("Connected to indexd")
+    println("Connected to indexer")
 
     var start = System.currentTimeMillis()
+    val obj = sdk.upload(ByteArrayInputStream("hello from upload()!".toByteArray()))
+    sdk.pinObject(obj)
+    var elapsed = System.currentTimeMillis() - start
+    println("Uploaded and pinned ${obj.size()} bytes with upload() in ${elapsed}ms")
+
+    val data = ByteArrayOutputStream()
+    start = System.currentTimeMillis()
+    sdk.download(data, obj)
+    elapsed = System.currentTimeMillis() - start
+    println("Downloaded with download(): \"${String(data.toByteArray())}\" in ${elapsed}ms")
+
+    println("\nUpload Packing Example...")
+
+    start = System.currentTimeMillis()
     val upload = sdk.uploadPacked(UploadOptions())
 
     for (i in 0 until 10) {
-        val data = "hello, world $i!"
-        val reader = StreamReader(ByteArrayInputStream(data.toByteArray()))
-        val size = upload.add(reader)
+        val payload = "hello, world $i!"
+        val size = upload.add(ByteArrayInputStream(payload.toByteArray()))
         val rem = upload.remaining()
         println("upload $i added $size bytes ($rem remaining)")
     }
 
     val objects = upload.finalize()
-    var elapsed = System.currentTimeMillis() - start
+    elapsed = System.currentTimeMillis() - start
     println("Upload finished ${objects.size} objects in ${elapsed}ms")
 
     // Pin each object to the indexer
-    for (obj in objects) {
-        sdk.pinObject(obj)
-        println("Pinned object ${obj.id()}")
+    for (pinned in objects) {
+        sdk.pinObject(pinned)
+        println("Pinned object ${pinned.id()}")
     }
 
     start = System.currentTimeMillis()
     val lastObj = objects.last()
     println("Downloading object ${lastObj.id()} ${lastObj.size()} bytes")
-    val downloaded = sdk.downloadBytes(lastObj)
+    val buffer = ByteArrayOutputStream()
+    sdk.download(buffer, lastObj, DownloadOptions())
     elapsed = System.currentTimeMillis() - start
-    println("Downloaded object ${lastObj.id()} with ${downloaded.size} bytes in ${elapsed}ms")
-
-    // Convenience functions for simple cases
-    println("\nConvenience function examples...")
-
-    val obj = sdk.uploadBytes("hello from uploadBytes!".toByteArray())
-    sdk.pinObject(obj)
-    println("Uploaded and pinned ${obj.size()} bytes with uploadBytes()")
-
-    val data = sdk.downloadBytes(obj)
-    println("Downloaded with downloadBytes(): \"${String(data)}\"")
+    println("Downloaded object ${lastObj.id()} with ${buffer.size()} bytes in ${elapsed}ms")
 }

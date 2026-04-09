@@ -1903,7 +1903,17 @@ open class PinnedObject: PinnedObjectProtocol, @unchecked Sendable {
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_sia_storage_ffi_fn_clone_pinnedobject(self.pointer, $0) }
     }
-    // No primary constructor declared for this class.
+    /**
+     * Creates a new empty object.
+     */
+public convenience init() {
+    let pointer =
+        try! rustCall() {
+    uniffi_sia_storage_ffi_fn_constructor_pinnedobject_new($0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
 
     deinit {
         guard let pointer = pointer else {
@@ -2390,13 +2400,21 @@ public protocol SdkProtocol: AnyObject, Sendable {
     func updateObjectMetadata(object: PinnedObject) async throws 
     
     /**
-     * Uploads data to the Sia network and pins it to the indexer
+     * Uploads data to the Sia network.
+     *
+     * Pass [PinnedObject::new] for new uploads. To resume a previous upload,
+     * pass the object returned from the earlier call. Appending data changes
+     * an object's ID. It must be re-pinned afterward and any references to
+     * the previous ID must be updated.
      *
      * # Arguments
-     * * `options` - The [UploadOptions] to use for the upload
+     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `r` - The reader to read the data from.
+     * * `options` - The [UploadOptions] to use for the upload.
      *
      * # Returns
-     * An object representing the uploaded data.
+     * A new object containing all slabs from the input object plus the newly
+     * uploaded slabs. The caller must pin the object to the indexer afterward.
      */
     func upload(object: PinnedObject, r: Reader, options: UploadOptions) async throws  -> PinnedObject
     
@@ -2720,13 +2738,21 @@ open func updateObjectMetadata(object: PinnedObject)async throws   {
 }
     
     /**
-     * Uploads data to the Sia network and pins it to the indexer
+     * Uploads data to the Sia network.
+     *
+     * Pass [PinnedObject::new] for new uploads. To resume a previous upload,
+     * pass the object returned from the earlier call. Appending data changes
+     * an object's ID. It must be re-pinned afterward and any references to
+     * the previous ID must be updated.
      *
      * # Arguments
-     * * `options` - The [UploadOptions] to use for the upload
+     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `r` - The reader to read the data from.
+     * * `options` - The [UploadOptions] to use for the upload.
      *
      * # Returns
-     * An object representing the uploaded data.
+     * A new object containing all slabs from the input object plus the newly
+     * uploaded slabs. The caller must pin the object to the indexer afterward.
      */
 open func upload(object: PinnedObject, r: Reader, options: UploadOptions)async throws  -> PinnedObject  {
     return
@@ -3225,6 +3251,10 @@ public struct Account {
      */
     public var maxPinnedData: UInt64
     /**
+     * Remaining amount of data in bytes that can still be pinned, after applying both the account limit and current quota limit.
+     */
+    public var remainingStorage: UInt64
+    /**
      * The amount of data currently pinned to the indexer for this account. This
      * counts towards max pinned data.
      */
@@ -3249,6 +3279,9 @@ public struct Account {
          * The maximum amount of data that can be pinned to the indexer for this account.
          */maxPinnedData: UInt64, 
         /**
+         * Remaining amount of data in bytes that can still be pinned, after applying both the account limit and current quota limit.
+         */remainingStorage: UInt64, 
+        /**
          * The amount of data currently pinned to the indexer for this account. This
          * counts towards max pinned data.
          */pinnedData: UInt64, 
@@ -3262,6 +3295,7 @@ public struct Account {
          */ready: Bool, app: App, lastUsed: Date) {
         self.accountKey = accountKey
         self.maxPinnedData = maxPinnedData
+        self.remainingStorage = remainingStorage
         self.pinnedData = pinnedData
         self.pinnedSize = pinnedSize
         self.ready = ready
@@ -3281,6 +3315,9 @@ extension Account: Equatable, Hashable {
             return false
         }
         if lhs.maxPinnedData != rhs.maxPinnedData {
+            return false
+        }
+        if lhs.remainingStorage != rhs.remainingStorage {
             return false
         }
         if lhs.pinnedData != rhs.pinnedData {
@@ -3304,6 +3341,7 @@ extension Account: Equatable, Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(accountKey)
         hasher.combine(maxPinnedData)
+        hasher.combine(remainingStorage)
         hasher.combine(pinnedData)
         hasher.combine(pinnedSize)
         hasher.combine(ready)
@@ -3323,6 +3361,7 @@ public struct FfiConverterTypeAccount: FfiConverterRustBuffer {
             try Account(
                 accountKey: FfiConverterString.read(from: &buf), 
                 maxPinnedData: FfiConverterUInt64.read(from: &buf), 
+                remainingStorage: FfiConverterUInt64.read(from: &buf), 
                 pinnedData: FfiConverterUInt64.read(from: &buf), 
                 pinnedSize: FfiConverterUInt64.read(from: &buf), 
                 ready: FfiConverterBool.read(from: &buf), 
@@ -3334,6 +3373,7 @@ public struct FfiConverterTypeAccount: FfiConverterRustBuffer {
     public static func write(_ value: Account, into buf: inout [UInt8]) {
         FfiConverterString.write(value.accountKey, into: &buf)
         FfiConverterUInt64.write(value.maxPinnedData, into: &buf)
+        FfiConverterUInt64.write(value.remainingStorage, into: &buf)
         FfiConverterUInt64.write(value.pinnedData, into: &buf)
         FfiConverterUInt64.write(value.pinnedSize, into: &buf)
         FfiConverterBool.write(value.ready, into: &buf)
@@ -6014,7 +6054,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_update_object_metadata() != 7918) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload() != 61988) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload() != 480) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 52625) {
@@ -6033,6 +6073,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_encryptionkey_parse() != 31248) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_pinnedobject_new() != 8222) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_pinnedobject_open() != 62198) {

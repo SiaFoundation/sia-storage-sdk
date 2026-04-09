@@ -36,7 +36,7 @@ Or in Xcode: File → Add Packages → enter the repository URL.
 ### CocoaPods
 
 ```ruby
-pod 'SiaStorageSDK', '~> 0.1'
+pod 'SiaStorageSDK', '~> 0.1.0'
 ```
 
 ## Example

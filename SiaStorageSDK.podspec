@@ -36,7 +36,7 @@ Pod::Spec.new do |s|
 
   s.prepare_command = <<-CMD
     set -euo pipefail
-    VERSION="0.1.0"
+    VERSION="#{s.version}"
     BASE_URL="https://github.com/SiaFoundation/sia-storage-sdk/releases/download/v${VERSION}"
 
     # Download the XCFramework and checksum file

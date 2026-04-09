@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'SiaStorageSDK'
-  s.version          = '0.4.1'
+  s.version          = '0.1.0'
   s.summary          = 'Swift SDK for Sia Storage'
   s.description      = <<-DESC
     SiaStorageSDK provides Swift bindings for interacting with Sia Storage.

@@ -2028,7 +2028,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "sia_core"
 version = "0.3.1"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=2551ed9153dc78570a8c2442f04d79027e2c3667#2551ed9153dc78570a8c2442f04d79027e2c3667"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=08c22f8ce3a88b31e07675b093500062a093ba8e#08c22f8ce3a88b31e07675b093500062a093ba8e"
 dependencies = [
  "base64",
  "bip39",
@@ -2055,7 +2055,7 @@ dependencies = [
 [[package]]
 name = "sia_core_derive"
 version = "0.1.0"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=2551ed9153dc78570a8c2442f04d79027e2c3667#2551ed9153dc78570a8c2442f04d79027e2c3667"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=08c22f8ce3a88b31e07675b093500062a093ba8e#08c22f8ce3a88b31e07675b093500062a093ba8e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2065,7 +2065,7 @@ dependencies = [
 [[package]]
 name = "sia_mux"
 version = "0.1.0"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=2551ed9153dc78570a8c2442f04d79027e2c3667#2551ed9153dc78570a8c2442f04d79027e2c3667"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=08c22f8ce3a88b31e07675b093500062a093ba8e#08c22f8ce3a88b31e07675b093500062a093ba8e"
 dependencies = [
  "blake2b_simd",
  "bytes",
@@ -2081,7 +2081,7 @@ dependencies = [
 [[package]]
 name = "sia_storage"
 version = "0.7.0"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=2551ed9153dc78570a8c2442f04d79027e2c3667#2551ed9153dc78570a8c2442f04d79027e2c3667"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=08c22f8ce3a88b31e07675b093500062a093ba8e#08c22f8ce3a88b31e07675b093500062a093ba8e"
 dependencies = [
  "base64",
  "blake2",
@@ -2122,7 +2122,7 @@ dependencies = [
 [[package]]
 name = "sia_storage_ffi"
 version = "0.7.0"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=2551ed9153dc78570a8c2442f04d79027e2c3667#2551ed9153dc78570a8c2442f04d79027e2c3667"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=08c22f8ce3a88b31e07675b093500062a093ba8e#08c22f8ce3a88b31e07675b093500062a093ba8e"
 dependencies = [
  "async-trait",
  "log",

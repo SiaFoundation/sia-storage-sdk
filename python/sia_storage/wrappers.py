@@ -9,6 +9,7 @@ plain-callable progress callbacks.
 from __future__ import annotations
 
 import asyncio
+from io import BytesIO
 from typing import Any, BinaryIO, Callable, Optional, Union
 
 from .sia_storage.sia_storage_ffi import (
@@ -125,7 +126,7 @@ class Sdk(_Sdk):
     async def upload(
         self,
         obj: PinnedObject,
-        r: BinaryIO,
+        r: Union[bytes, bytearray, memoryview, BinaryIO],
         options: Optional[UploadOptions] = None,
     ) -> PinnedObject:
         """Uploads data to the Sia network.
@@ -137,7 +138,8 @@ class Sdk(_Sdk):
 
         Args:
             obj: The object to upload into. Use `PinnedObject()` for a new upload.
-            r: A file-like object to read data from.
+            r: The data to upload. Accepts a `bytes`-like value or any file-like
+                object with a `read(n)` method.
             options: The upload options. `shard_uploaded` accepts either a
                 ProgressCallback or any callable taking a ShardProgress.
 
@@ -145,6 +147,8 @@ class Sdk(_Sdk):
             An object containing all slabs from `obj` plus the newly uploaded
             slabs. The caller is responsible for pinning the returned object.
         """
+        if isinstance(r, (bytes, bytearray, memoryview)):
+            r = BytesIO(bytes(r))
         return await super().upload(
             obj,
             BytesReader(r),
@@ -262,7 +266,7 @@ class Download:
 
     async def close(self) -> None:
         """Cancels the download and releases any in-flight recovery tasks."""
-        await self._inner.close()
+        await self._inner.cancel()
 
 
 class PackedUpload(_PackedUpload):
@@ -279,7 +283,7 @@ class PackedUpload(_PackedUpload):
     def _from_ffi(cls, inner: _PackedUpload):
         return cls._uniffi_make_instance(inner._uniffi_clone_handle())
 
-    async def add(self, reader: BinaryIO) -> int:
+    async def add(self, reader: Union[bytes, bytearray, memoryview, BinaryIO]) -> int:
         """Adds a new object to the upload.
 
         The data will be read until EOF and packed into the upload. The caller
@@ -287,11 +291,14 @@ class PackedUpload(_PackedUpload):
         been added.
 
         Args:
-            reader: A file-like object to read data from.
+            reader: The data to add. Accepts a `bytes`-like value or any file-like
+                object with a `read(n)` method.
 
         Returns:
             The number of bytes read.
         """
+        if isinstance(reader, (bytes, bytearray, memoryview)):
+            reader = BytesIO(bytes(reader))
         return await super().add(BytesReader(reader))
 
 

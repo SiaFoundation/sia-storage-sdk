@@ -11,6 +11,16 @@ class PrintLogger : Logger {
     override fun error(msg: String) = println("ERROR $msg")
 }
 
+val onUpload = progressCallback { p ->
+    println("  uploaded slab ${p.slabIndex} shard ${p.shardIndex} " +
+            "(${p.shardSize} bytes) to ${p.hostKey} in ${p.elapsedMs}ms")
+}
+
+val onDownload = progressCallback { p ->
+    println("  downloaded slab ${p.slabIndex} shard ${p.shardIndex} " +
+            "(${p.shardSize} bytes) from ${p.hostKey} in ${p.elapsedMs}ms")
+}
+
 fun main() = runBlocking {
     setLogger(PrintLogger(), "debug")
 
@@ -45,16 +55,20 @@ fun main() = runBlocking {
     println("Connected to indexer")
 
     var start = System.currentTimeMillis()
-    val obj = sdk.upload(ByteArrayInputStream("hello from upload()!".toByteArray()))
+    val obj = sdk.upload(
+        PinnedObject(),
+        ByteArrayInputStream("hello from upload()!".toByteArray()),
+        UploadOptions(shardUploaded = onUpload),
+    )
     sdk.pinObject(obj)
-    var elapsed = System.currentTimeMillis() - start
-    println("Uploaded and pinned ${obj.size()} bytes with upload() in ${elapsed}ms")
+    var elapsed = (System.currentTimeMillis() - start) / 1000.0
+    println("Uploaded and pinned ${obj.size()} bytes with upload() in %.2fs".format(elapsed))
 
-    val data = ByteArrayOutputStream()
     start = System.currentTimeMillis()
-    sdk.download(data, obj)
-    elapsed = System.currentTimeMillis() - start
-    println("Downloaded with download(): \"${String(data.toByteArray())}\" in ${elapsed}ms")
+    val d = sdk.download(obj, DownloadOptions(shardDownloaded = onDownload))
+    val data = d.readAll()
+    elapsed = (System.currentTimeMillis() - start) / 1000.0
+    println("Downloaded with download(): \"${String(data)}\" in %.2fs".format(elapsed))
 
     println("\nUpload Packing Example...")
 
@@ -69,8 +83,8 @@ fun main() = runBlocking {
     }
 
     val objects = upload.finalize()
-    elapsed = System.currentTimeMillis() - start
-    println("Upload finished ${objects.size} objects in ${elapsed}ms")
+    elapsed = (System.currentTimeMillis() - start) / 1000.0
+    println("Upload finished ${objects.size} objects in %.2fs".format(elapsed))
 
     // Pin each object to the indexer
     for (obj in objects) {
@@ -82,7 +96,8 @@ fun main() = runBlocking {
     val lastObj = objects.last()
     println("Downloading object ${lastObj.id()} ${lastObj.size()} bytes")
     val buffer = ByteArrayOutputStream()
-    sdk.download(buffer, lastObj, DownloadOptions())
-    elapsed = System.currentTimeMillis() - start
-    println("Downloaded object ${lastObj.id()} with ${buffer.size()} bytes in ${elapsed}ms")
+    val d2 = sdk.download(lastObj, DownloadOptions())
+    val total = d2.writeTo(buffer)
+    elapsed = (System.currentTimeMillis() - start) / 1000.0
+    println("Downloaded object ${lastObj.id()} with $total bytes in %.2fs".format(elapsed))
 }

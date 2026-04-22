@@ -2,13 +2,32 @@
  * Idiomatic Kotlin wrappers for the Sia SDK.
  *
  * This module provides convenience classes and extension functions that make the SDK
- * feel native to Kotlin developers, wrapping the low-level Reader/Writer
- * traits with standard Java/Kotlin I/O support.
+ * feel native to Kotlin developers, wrapping the low-level Reader trait with
+ * standard Java/Kotlin I/O support and exposing the streaming [Download] handle
+ * with convenience readers for in-memory and [OutputStream] sinks.
  */
 package sia.indexd
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+
+/**
+ * Wraps a plain lambda as a [ProgressCallback].
+ *
+ * Example:
+ * ```kotlin
+ * sdk.upload(obj, stream, UploadOptions(shardUploaded = progressCallback { p ->
+ *     println("uploaded shard ${p.shardIndex} in ${p.elapsedMs}ms")
+ * }))
+ * ```
+ */
+fun progressCallback(fn: (ShardProgress) -> Unit): ProgressCallback = object : ProgressCallback {
+    override fun progress(progress: ShardProgress) = fn(progress)
+}
 
 /**
  * Adapts an [InputStream] to the [Reader] trait.
@@ -19,13 +38,13 @@ import java.io.OutputStream
  * Example:
  * ```kotlin
  * // From bytes
- * val reader = StreamReader(ByteArrayInputStream(data))
+ * val reader = BytesReader(ByteArrayInputStream(data))
  *
  * // From file
- * val reader = StreamReader(FileInputStream("data.bin"))
+ * val reader = BytesReader(FileInputStream("data.bin"))
  * ```
  */
-class StreamReader(
+class BytesReader(
     private val stream: InputStream,
     private val chunkSize: Int = 1 shl 20,
 ) : Reader {
@@ -37,58 +56,95 @@ class StreamReader(
 }
 
 /**
- * Adapts an [OutputStream] to the [Writer] trait.
+ * Upload data from an [InputStream] to the Sia network.
  *
- * This allows you to download data to any destination that supports the
- * standard Java/Kotlin OutputStream interface (files, ByteArrayOutputStream, etc.).
+ * Pass `PinnedObject()` for a new upload. To resume a previous upload,
+ * pass the object returned from the earlier call. Appending data changes
+ * the object's ID, so any existing references must be updated and the
+ * object must be re-pinned afterward.
  *
  * Example:
  * ```kotlin
- * // To ByteArrayOutputStream
- * val buffer = ByteArrayOutputStream()
- * val writer = StreamWriter(buffer)
- *
- * // To file
- * val writer = StreamWriter(FileOutputStream("output.bin"))
+ * val obj = sdk.upload(PinnedObject(), ByteArrayInputStream("hello, world!".toByteArray()))
  * ```
  */
-class StreamWriter(
-    private val stream: OutputStream,
-) : Writer {
-    override suspend fun write(data: ByteArray) {
-        if (data.isNotEmpty()) {
-            stream.write(data)
-        }
+suspend fun Sdk.upload(
+    obj: PinnedObject,
+    r: InputStream,
+    options: UploadOptions = UploadOptions(),
+): PinnedObject = upload(obj, BytesReader(r), options)
+
+/**
+ * Upload an in-memory [ByteArray] to the Sia network.
+ *
+ * Example:
+ * ```kotlin
+ * val obj = sdk.upload(PinnedObject(), "hello, world!".toByteArray())
+ * ```
+ */
+suspend fun Sdk.upload(
+    obj: PinnedObject,
+    data: ByteArray,
+    options: UploadOptions = UploadOptions(),
+): PinnedObject = upload(obj, BytesReader(ByteArrayInputStream(data)), options)
+
+/**
+ * Reads the entire remaining stream into memory and returns it.
+ *
+ * Example:
+ * ```kotlin
+ * val d = sdk.download(obj)
+ * try { val bytes = d.readAll() } finally { d.close() }
+ * ```
+ */
+suspend fun Download.readAll(): ByteArray {
+    val out = ByteArrayOutputStream()
+    while (true) {
+        val chunk = read()
+        if (chunk.isEmpty()) break
+        out.write(chunk)
+    }
+    return out.toByteArray()
+}
+
+/**
+ * Exposes the download as a cold [Flow] of chunks. Emission stops on EOF.
+ *
+ * Example:
+ * ```kotlin
+ * sdk.download(obj).use { d ->
+ *     d.asFlow().collect { chunk -> process(chunk) }
+ * }
+ * ```
+ */
+fun Download.asFlow(): Flow<ByteArray> = flow {
+    while (true) {
+        val chunk = read()
+        if (chunk.isEmpty()) break
+        emit(chunk)
     }
 }
 
 /**
- * Upload data from an [InputStream] to the Sia network.
- *
- * Example:
- * ```kotlin
- * val obj = sdk.upload(ByteArrayInputStream("hello, world!".toByteArray()))
- * ```
- */
-suspend fun Sdk.upload(
-    r: InputStream,
-    options: UploadOptions = UploadOptions(),
-): PinnedObject = upload(PinnedObject(), StreamReader(r), options)
-
-/**
- * Download an object and write its contents to an [OutputStream].
+ * Streams the remaining data to an [OutputStream] and returns the total bytes written.
  *
  * Example:
  * ```kotlin
  * val buffer = ByteArrayOutputStream()
- * sdk.download(buffer, obj)
+ * val d = sdk.download(obj)
+ * try { d.writeTo(buffer) } finally { d.close() }
  * ```
  */
-suspend fun Sdk.download(
-    w: OutputStream,
-    obj: PinnedObject,
-    options: DownloadOptions = DownloadOptions(),
-) = download(StreamWriter(w), obj, options)
+suspend fun Download.writeTo(w: OutputStream): Long {
+    var total = 0L
+    while (true) {
+        val chunk = read()
+        if (chunk.isEmpty()) break
+        w.write(chunk)
+        total += chunk.size
+    }
+    return total
+}
 
 /**
  * Add data from an [InputStream] to a packed upload.
@@ -100,4 +156,16 @@ suspend fun Sdk.download(
  */
 suspend fun PackedUpload.add(
     reader: InputStream,
-): ULong = add(StreamReader(reader))
+): ULong = add(BytesReader(reader))
+
+/**
+ * Add an in-memory [ByteArray] to a packed upload.
+ *
+ * Example:
+ * ```kotlin
+ * val size = upload.add("hello, world!".toByteArray())
+ * ```
+ */
+suspend fun PackedUpload.add(
+    data: ByteArray,
+): ULong = add(BytesReader(ByteArrayInputStream(data)))

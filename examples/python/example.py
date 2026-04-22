@@ -87,12 +87,14 @@ async def main():
         UploadOptions(shard_uploaded=on_upload),
     )
     await sdk.pin_object(obj)
-    print(f"Uploaded and pinned {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    print(f"Uploaded and pinned {obj.size()} bytes with upload() in {elapsed:.2f}s")
 
     start = datetime.now(timezone.utc)
     async with sdk.download(obj, DownloadOptions(shard_downloaded=on_download)) as d:
         data = await d.read_all()
-    print(f"Downloaded with download(): {data.decode()!r} in {datetime.now(timezone.utc) - start}")
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    print(f"Downloaded with download(): {data.decode()!r} in {elapsed:.2f}s")
 
     print("\nUpload Packing Example...")
 
@@ -106,8 +108,8 @@ async def main():
         print(f"upload {i} added {size} bytes ({rem} remaining)")
 
     objects = await upload.finalize()
-    elapsed = datetime.now(timezone.utc) - start
-    print(f"Upload finished {len(objects)} objects in {elapsed}")
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    print(f"Upload finished {len(objects)} objects in {elapsed:.2f}s")
 
     # Pin each object to the indexer
     for obj in objects:
@@ -119,10 +121,8 @@ async def main():
     print(f"Downloading object {objects[-1].id()} {objects[-1].size()} bytes")
     async with sdk.download(objects[-1]) as d:
         total = await d.write_to(buffer)
-    elapsed = datetime.now(timezone.utc) - start
-    print(
-        f"Downloaded object {objects[-1].id()} with {total} bytes in {elapsed}"
-    )
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    print(f"Downloaded object {objects[-1].id()} with {total} bytes in {elapsed:.2f}s")
 
 
 asyncio.run(main())

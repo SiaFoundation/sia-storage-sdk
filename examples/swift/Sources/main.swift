@@ -21,6 +21,14 @@ final class PrintLogger: Logger, @unchecked Sendable {
     }
 }
 
+let onUpload = progressCallback { p in
+    print("  uploaded slab \(p.slabIndex) shard \(p.shardIndex) (\(p.shardSize) bytes) to \(p.hostKey) in \(p.elapsedMs)ms")
+}
+
+let onDownload = progressCallback { p in
+    print("  downloaded slab \(p.slabIndex) shard \(p.shardIndex) (\(p.shardSize) bytes) from \(p.hostKey) in \(p.elapsedMs)ms")
+}
+
 // MARK: - Main
 
 @main
@@ -64,13 +72,21 @@ struct SiaStorageSDKExample {
             print("Connected to indexer")
 
             var start = Date()
-            let obj = try await sdk.upload(data: "hello from upload()!".data(using: .utf8)!)
+            let obj = try await sdk.upload(
+                object: PinnedObject(),
+                data: "hello from upload()!".data(using: .utf8)!,
+                options: UploadOptions(shardUploaded: onUpload)
+            )
             try await sdk.pinObject(object: obj)
             var elapsed = Date().timeIntervalSince(start)
             print("Uploaded and pinned \(obj.size()) bytes with upload() in \(String(format: "%.2f", elapsed))s")
 
             start = Date()
-            let downloadedSimple = try await sdk.download(object: obj)
+            let d = try sdk.download(
+                object: obj,
+                options: DownloadOptions(shardDownloaded: onDownload)
+            )
+            let downloadedSimple = try await d.readAll()
             elapsed = Date().timeIntervalSince(start)
             if let content = String(data: downloadedSimple, encoding: .utf8) {
                 print("Downloaded with download(): \"\(content)\" in \(String(format: "%.2f", elapsed))s")
@@ -80,7 +96,7 @@ struct SiaStorageSDKExample {
 
             // Packed upload example
             start = Date()
-            let upload = await sdk.uploadPacked(options: UploadOptions())
+            let upload = try await sdk.uploadPacked(options: UploadOptions())
 
             for i in 0..<10 {
                 let size = try await upload.add(data: "hello, world \(i)!".data(using: .utf8)!)
@@ -105,9 +121,11 @@ struct SiaStorageSDKExample {
             }
             start = Date()
             print("Downloading object \(lastObject.id()) \(lastObject.size()) bytes")
-            let downloadedData = try await sdk.download(object: lastObject, options: DownloadOptions())
+            let buffer = OutputStream.toMemory()
+            let d2 = try sdk.download(object: lastObject, options: DownloadOptions())
+            let total = try await d2.write(to: buffer)
             elapsed = Date().timeIntervalSince(start)
-            print("Downloaded object \(lastObject.id()) with \(downloadedData.count) bytes in \(String(format: "%.2f", elapsed))s")
+            print("Downloaded object \(lastObject.id()) with \(total) bytes in \(String(format: "%.2f", elapsed))s")
 
         } catch {
             print("Error: \(error)")

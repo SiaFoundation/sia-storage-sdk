@@ -4,7 +4,7 @@
  * This module provides convenience classes and extensions that make the SDK
  * feel native to Swift developers: a `Reader` adapter for both `Data` and
  * `InputStream` sources, and convenience methods on the streaming `Download`
- * handle for draining into `Data` or writing into a `FileHandle`.
+ * handle for draining into `Data` or writing into an `OutputStream`.
  */
 
 import Foundation

@@ -16,7 +16,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/SiaFoundation/sia-storage-sdk", from: "0.4.1")
+    .package(url: "https://github.com/SiaFoundation/sia-storage-sdk", from: "0.1.0")
 ]
 ```
 
@@ -36,7 +36,7 @@ Or in Xcode: File → Add Packages → enter the repository URL.
 ### CocoaPods
 
 ```ruby
-pod 'SiaStorageSDK', '~> 0.4'
+pod 'SiaStorageSDK', '~> 0.1.0'
 ```
 
 ## Example
@@ -48,7 +48,7 @@ import SiaStorageSDK
 setLogger(logger: MyLogger(), level: "debug")
 
 // Create a builder and connect
-let builder = try await Builder(indexerUrl: "https://app.sia.storage", appMeta: AppMeta(
+let builder = try await Builder(indexerUrl: "https://sia.storage", appMeta: AppMeta(
     id: appId,
     name: "My App",
     description: "App description",

@@ -8,7 +8,6 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     uniffi_set_event_loop,
     # Classes/Objects
     AppKey,
-    EncryptionKey,
     PinnedObject,
     # Records
     Account,
@@ -21,6 +20,7 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     PinnedSector,
     PinnedSlab,
     SealedObject,
+    ShardProgress,
     Slab,
     UploadOptions,
     DownloadOptions,
@@ -34,24 +34,19 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     AppKeyError,
     SeedError,
     BuilderError,
-    EncryptionKeyParseError,
     ObjectError,
     IoError,
     # Base classes for implementing custom traits
     Logger,
     Reader,
-    Writer,
-    UploadProgressCallback,
-    # Protocols (typing interfaces)
-    LoggerProtocol,
-    ReaderProtocol,
-    WriterProtocol,
-    UploadProgressCallbackProtocol,
+    ProgressCallback,
 )
 
 # Idiomatic Python wrappers for common operations
 from sia_storage.wrappers import (
     Builder,
+    BytesReader,
+    Download,
     PackedUpload,
     Sdk,
 )
@@ -71,9 +66,10 @@ __all__ = [
     "SDK",
     "Builder",
     "AppKey",
-    "EncryptionKey",
     "PinnedObject",
     "PackedUpload",
+    "Download",
+    "BytesReader",
     # Records
     "Account",
     "App",
@@ -85,6 +81,7 @@ __all__ = [
     "PinnedSector",
     "PinnedSlab",
     "SealedObject",
+    "ShardProgress",
     "Slab",
     "UploadOptions",
     "DownloadOptions",
@@ -98,17 +95,10 @@ __all__ = [
     "AppKeyError",
     "SeedError",
     "BuilderError",
-    "EncryptionKeyParseError",
     "ObjectError",
     "IOError",  # alias
     # Base classes for implementing custom traits
     "Logger",
     "Reader",
-    "Writer",
-    "UploadProgressCallback",
-    # Protocols (typing interfaces)
-    "LoggerProtocol",
-    "ReaderProtocol",
-    "WriterProtocol",
-    "UploadProgressCallbackProtocol",
+    "ProgressCallback",
 ]

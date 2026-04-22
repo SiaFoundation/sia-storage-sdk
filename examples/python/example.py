@@ -8,6 +8,7 @@ from sia_storage import (
     generate_recovery_phrase,
     AppMeta,
     Builder,
+    PinnedObject,
     UploadOptions,
     DownloadOptions,
     set_logger,
@@ -32,11 +33,25 @@ class PrintLogger(Logger):
 set_logger(PrintLogger(), "debug")
 
 
+def on_upload(progress):
+    print(
+        f"  uploaded slab {progress.slab_index} shard {progress.shard_index} "
+        f"({progress.shard_size} bytes) to {progress.host_key} in {progress.elapsed_ms}ms"
+    )
+
+
+def on_download(progress):
+    print(
+        f"  downloaded slab {progress.slab_index} shard {progress.shard_index} "
+        f"({progress.shard_size} bytes) from {progress.host_key} in {progress.elapsed_ms}ms"
+    )
+
+
 async def main():
     app_id = b"\x01" * 32
 
     builder = Builder(
-        "https://app.sia.storage",
+        "https://sia.storage",
         AppMeta(
             id=app_id,
             name="python example",
@@ -66,17 +81,21 @@ async def main():
     print("Connected to indexer")
 
     start = datetime.now(timezone.utc)
-    obj = await sdk.upload(BytesIO(b"hello from upload()!"))
+    obj = await sdk.upload(
+        PinnedObject(),
+        BytesIO(b"hello from upload()!"),
+        UploadOptions(shard_uploaded=on_upload),
+    )
     await sdk.pin_object(obj)
     print(f"Uploaded and pinned {obj.size()} bytes with upload() in {datetime.now(timezone.utc) - start}")
 
-    data = BytesIO()
     start = datetime.now(timezone.utc)
-    await sdk.download(data, obj)
-    print(f"Downloaded with download(): {data.getvalue().decode()!r} in {datetime.now(timezone.utc) - start}")
+    async with sdk.download(obj, DownloadOptions(shard_downloaded=on_download)) as d:
+        data = await d.read_all()
+    print(f"Downloaded with download(): {data.decode()!r} in {datetime.now(timezone.utc) - start}")
 
     print("\nUpload Packing Example...")
-    
+
     start = datetime.now(timezone.utc)
     upload = await sdk.upload_packed(UploadOptions())
 
@@ -98,13 +117,12 @@ async def main():
     start = datetime.now(timezone.utc)
     buffer = BytesIO()
     print(f"Downloading object {objects[-1].id()} {objects[-1].size()} bytes")
-    await sdk.download(buffer, objects[-1], DownloadOptions())
+    async with sdk.download(objects[-1]) as d:
+        total = await d.write_to(buffer)
     elapsed = datetime.now(timezone.utc) - start
     print(
-        f"Downloaded object {objects[-1].id()} with {len(buffer.getvalue())} bytes in {elapsed}"
+        f"Downloaded object {objects[-1].id()} with {total} bytes in {elapsed}"
     )
-
-
 
 
 asyncio.run(main())

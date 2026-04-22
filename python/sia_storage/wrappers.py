@@ -1,26 +1,68 @@
 """Idiomatic Python wrappers for the Sia SDK.
 
-This module provides convenience classes and functions that make the SDK
-feel native to Python developers, wrapping the low-level Reader/Writer
-traits with standard file-like object support.
+This module provides convenience classes that make the SDK feel native to
+Python developers: file-like reader/writer support for upload/download,
+async iteration and context-manager semantics for streaming downloads, and
+plain-callable progress callbacks.
 """
 
+from __future__ import annotations
+
 import asyncio
-from typing import BinaryIO, Optional
+from typing import Any, BinaryIO, Callable, Optional, Union
 
 from .sia_storage.sia_storage_ffi import (
     AppKey,
     AppMeta,
     Builder as _Builder,
+    Download as _Download,
     DownloadOptions,
     PackedUpload as _PackedUpload,
     PinnedObject,
+    ProgressCallback,
     Reader,
     Sdk as _Sdk,
+    ShardProgress,
     UploadOptions,
-    Writer,
     uniffi_set_event_loop,
 )
+
+
+ProgressHandler = Union[ProgressCallback, Callable[[ShardProgress], Any]]
+
+
+class _CallableProgress(ProgressCallback):
+    """Adapts a plain callable into a ProgressCallback trait implementation."""
+
+    def __init__(self, fn: Callable[[ShardProgress], Any]):
+        self._fn = fn
+
+    def progress(self, progress: ShardProgress) -> None:
+        self._fn(progress)
+
+
+def _wrap_progress(cb):
+    if cb is None or isinstance(cb, ProgressCallback):
+        return cb
+    if callable(cb):
+        return _CallableProgress(cb)
+    raise TypeError(
+        f"progress callback must be a ProgressCallback or callable, got {type(cb).__name__}"
+    )
+
+
+def _prepare_upload_options(options: Optional[UploadOptions]) -> UploadOptions:
+    if options is None:
+        return UploadOptions()
+    options.shard_uploaded = _wrap_progress(options.shard_uploaded)
+    return options
+
+
+def _prepare_download_options(options: Optional[DownloadOptions]) -> DownloadOptions:
+    if options is None:
+        return DownloadOptions()
+    options.shard_downloaded = _wrap_progress(options.shard_downloaded)
+    return options
 
 
 class Builder(_Builder):
@@ -38,7 +80,7 @@ class Builder(_Builder):
             pass  # No running loop yet
         super().__init__(indexer_url, app_meta)
 
-    async def connected(self, app_key: AppKey) -> "Optional[Sdk]":
+    async def connected(self, app_key: AppKey) -> Optional[Sdk]:
         """Attempts to connect using the provided app key.
 
         If the app key is valid, returns an Sdk instance, otherwise returns None.
@@ -52,7 +94,7 @@ class Builder(_Builder):
             return Sdk._from_ffi(result)
         return None
 
-    async def register(self, mnemonic: str) -> "Sdk":
+    async def register(self, mnemonic: str) -> Sdk:
         """Registers the application with the indexer using the provided mnemonic.
 
         Once registered, returns an Sdk instance that can be used to interact
@@ -67,8 +109,9 @@ class Builder(_Builder):
 class Sdk(_Sdk):
     """The main SDK for interacting with the Sia decentralized storage network.
 
-    Accepts standard Python file-like objects (BinaryIO) for upload and
-    download operations.
+    Accepts standard Python file-like objects (BinaryIO) for uploads, returns
+    an async-iterable Download handle for downloads, and accepts plain Python
+    callables for progress reporting.
     """
 
     def __init__(self, *args, **kwargs):
@@ -77,21 +120,38 @@ class Sdk(_Sdk):
     @classmethod
     def _from_ffi(cls, inner: _Sdk):
         # exploits UniFFI's internals to wrap the class
-        return cls._make_instance_(inner._uniffi_clone_pointer())
+        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
 
-    async def upload(self, r: BinaryIO, options: Optional[UploadOptions] = None) -> PinnedObject:
-        """Uploads data to the Sia network and pins it to the indexer.
+    async def upload(
+        self,
+        obj: PinnedObject,
+        r: BinaryIO,
+        options: Optional[UploadOptions] = None,
+    ) -> PinnedObject:
+        """Uploads data to the Sia network.
+
+        Pass `PinnedObject()` for a new upload. To resume a previous upload,
+        pass the object returned from the earlier call. Appending data changes
+        the object's ID, so any existing references must be updated and the
+        object must be re-pinned afterward.
 
         Args:
+            obj: The object to upload into. Use `PinnedObject()` for a new upload.
             r: A file-like object to read data from.
-            options: The upload options to use for the upload.
+            options: The upload options. `shard_uploaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
 
         Returns:
-            An object representing the uploaded data.
+            An object containing all slabs from `obj` plus the newly uploaded
+            slabs. The caller is responsible for pinning the returned object.
         """
-        return await super().upload(PinnedObject(), BytesReader(r), options or UploadOptions())
+        return await super().upload(
+            obj,
+            BytesReader(r),
+            _prepare_upload_options(options),
+        )
 
-    async def upload_packed(self, options: Optional[UploadOptions] = None) -> "PackedUpload":
+    async def upload_packed(self, options: Optional[UploadOptions] = None) -> PackedUpload:
         """Creates a new packed upload.
 
         This allows multiple objects to be packed together for more efficient
@@ -99,22 +159,110 @@ class Sdk(_Sdk):
         upload, and then finalized to get the resulting objects.
 
         Args:
-            options: The upload options to use for the upload.
+            options: The upload options. `shard_uploaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
 
         Returns:
             A PackedUpload that can be used to add objects and finalize the upload.
         """
-        return PackedUpload._from_ffi(await super().upload_packed(options or UploadOptions()))
+        return PackedUpload._from_ffi(
+            await super().upload_packed(_prepare_upload_options(options))
+        )
 
-    async def download(self, w: BinaryIO, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> None:
-        """Initiates a download of the data referenced by the object.
+    def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
+        """Starts a download of the data referenced by the object.
+
+        Returns a Download handle that streams chunks of decoded data. Use it
+        as an async context manager, iterate over it to consume chunks, or
+        call read_all() / write_to() for common patterns.
 
         Args:
-            w: A file-like object to write data to.
             obj: The pinned object to download.
-            options: The download options to use for the download.
+            options: The download options. `shard_downloaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
+
+        Returns:
+            A Download handle.
         """
-        await super().download(BytesWriter(w), obj, options or DownloadOptions())
+        return Download(super().download(obj, _prepare_download_options(options)))
+
+
+class Download:
+    """An async stream of bytes from a downloaded object.
+
+    The handle starts yielding chunks as soon as they become available. Drop
+    the handle (via `async with`) or call close() to cancel an in-flight
+    download.
+
+    Example:
+        # Read into memory
+        async with sdk.download(obj) as d:
+            data = await d.read_all()
+
+        # Stream chunks to a file
+        async with sdk.download(obj) as d:
+            with open("out.bin", "wb") as f:
+                await d.write_to(f)
+
+        # Iterate over chunks
+        async with sdk.download(obj) as d:
+            async for chunk in d:
+                process(chunk)
+    """
+
+    def __init__(self, inner: _Download):
+        self._inner = inner
+
+    async def __aenter__(self) -> Download:
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.close()
+
+    def __aiter__(self) -> Download:
+        return self
+
+    async def __anext__(self) -> bytes:
+        chunk = await self._inner.read()
+        if not chunk:
+            raise StopAsyncIteration
+        return chunk
+
+    async def read(self) -> bytes:
+        """Reads the next chunk of decoded data. Returns b'' on EOF."""
+        return await self._inner.read()
+
+    async def read_all(self) -> bytes:
+        """Reads the entire remaining stream into memory and returns it."""
+        parts = []
+        while True:
+            chunk = await self._inner.read()
+            if not chunk:
+                break
+            parts.append(chunk)
+        return b"".join(parts)
+
+    async def write_to(self, w: BinaryIO) -> int:
+        """Streams the remaining data to a file-like writer.
+
+        Args:
+            w: Any object with a write(data) method.
+
+        Returns:
+            The total number of bytes written.
+        """
+        total = 0
+        while True:
+            chunk = await self._inner.read()
+            if not chunk:
+                break
+            w.write(chunk)
+            total += len(chunk)
+        return total
+
+    async def close(self) -> None:
+        """Cancels the download and releases any in-flight recovery tasks."""
+        await self._inner.close()
 
 
 class PackedUpload(_PackedUpload):
@@ -129,7 +277,7 @@ class PackedUpload(_PackedUpload):
 
     @classmethod
     def _from_ffi(cls, inner: _PackedUpload):
-        return cls._make_instance_(inner._uniffi_clone_pointer())
+        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
 
     async def add(self, reader: BinaryIO) -> int:
         """Adds a new object to the upload.
@@ -175,33 +323,3 @@ class BytesReader(Reader):
     async def read(self) -> bytes:
         """Read the next chunk of data."""
         return self._stream.read(self._chunk_size)
-
-
-class BytesWriter(Writer):
-    """Adapts any file-like object to the Writer trait.
-
-    This allows you to download data to any destination that supports
-    the standard Python binary write interface (files, BytesIO, etc.).
-
-    Example:
-        # To BytesIO
-        buf = BytesIO()
-        writer = BytesWriter(buf)
-
-        # To file
-        with open("output.bin", "wb") as f:
-            writer = BytesWriter(f)
-    """
-
-    def __init__(self, stream: BinaryIO):
-        """Create a BytesWriter from a file-like object.
-
-        Args:
-            stream: Any object with a write(data) method.
-        """
-        self._stream = stream
-
-    async def write(self, data: bytes) -> None:
-        """Write a chunk of data."""
-        if len(data) > 0:
-            self._stream.write(data)

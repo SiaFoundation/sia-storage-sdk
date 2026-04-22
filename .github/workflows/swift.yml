@@ -116,7 +116,7 @@ jobs:
           import SiaStorageSDK
           import Foundation
 
-          let _ = try Builder(indexerUrl: "https://app.sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))
+          let _ = try Builder(indexerUrl: "https://sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))
           print("consumer smoke build ok")
           EOF
           SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
@@ -283,7 +283,7 @@ jobs:
           import SiaStorageSDK
           import Foundation
 
-          let _ = try Builder(indexerUrl: "https://app.sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))
+          let _ = try Builder(indexerUrl: "https://sia.storage", appMeta: AppMeta(id: Data(repeating: 0x01, count: 32), name: "smoke test", description: "smoke test", serviceUrl: "https://example.com", logoUrl: nil, callbackUrl: nil))
           print("release smoke build ok")
           EOF
 

@@ -31,7 +31,7 @@ fun main() = runBlocking {
 
     val appId = ByteArray(32) { 0x01 }
 
-    val builder = Builder("https://app.sia.storage", AppMeta(
+    val builder = Builder("https://sia.storage", AppMeta(
         id = appId,
         name = "My App",
         description = "App description",

@@ -22,10 +22,10 @@ from io import BytesIO
 
 from sia_storage import (
     generate_recovery_phrase,
-    set_logger,
     AppMeta,
     Builder,
-    Logger,
+    DownloadOptions,
+    PinnedObject,
     UploadOptions,
 )
 
@@ -40,11 +40,12 @@ class PrintLogger(Logger):
 set_logger(PrintLogger(), "debug")
 
 
+
 async def main():
     app_id = b"\x01" * 32
 
     builder = Builder(
-        "https://app.sia.storage",
+        "https://sia.storage",
         AppMeta(
             id=app_id,
             name="My App",
@@ -64,20 +65,28 @@ async def main():
     mnemonic = generate_recovery_phrase()
     sdk = await builder.register(mnemonic)
 
-    # Upload data
-    upload = await sdk.upload_packed(UploadOptions())
-    await upload.add(BytesIO(b"hello, world!"))
-    objects = await upload.finalize()
+    # Upload a single object. Progress callbacks accept plain callables.
+    def on_upload(p):
+        print(f"uploaded shard {p.shard_index} of slab {p.slab_index} in {p.elapsed_ms}ms")
 
-    # Download data
-    buf = BytesIO()
-    await sdk.download(buf, objects[-1])
+    obj = await sdk.upload(
+        PinnedObject(),
+        BytesIO(b"hello, world!"),
+        UploadOptions(shard_uploaded=on_upload),
+    )
+    await sdk.pin_object(obj)
+
+    # Download streams via an async context manager.
+    def on_download(p):
+        print(f"downloaded shard {p.shard_index} of slab {p.slab_index} in {p.elapsed_ms}ms")
+
+    async with sdk.download(obj, DownloadOptions(shard_downloaded=on_download)) as d:
+        data = await d.read_all()
+    print(data)
 
 
 asyncio.run(main())
 ```
-
-`PrintLogger` is a user-defined class that extends the SDK's `Logger` base class.
 
 A complete working example is available in [examples/python/](../examples/python/).
 
@@ -85,7 +94,9 @@ A complete working example is available in [examples/python/](../examples/python
 
 ```sh
 cd python
-pip install maturin
+python3 -m venv .venv
+source .venv/bin/activate
+pip3 install maturin
 
 # Build and install the wheel
 maturin develop

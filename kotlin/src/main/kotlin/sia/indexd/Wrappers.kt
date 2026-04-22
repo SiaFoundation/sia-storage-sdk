@@ -7,8 +7,6 @@
  */
 package sia.indexd
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -29,7 +27,7 @@ import java.io.OutputStream
  */
 class StreamReader(
     private val stream: InputStream,
-    private val chunkSize: Int = 65536,
+    private val chunkSize: Int = 1 shl 20,
 ) : Reader {
     override suspend fun read(): ByteArray {
         val buffer = ByteArray(chunkSize)
@@ -65,31 +63,41 @@ class StreamWriter(
 }
 
 /**
- * Upload bytes directly to the Sia network.
+ * Upload data from an [InputStream] to the Sia network.
  *
  * Example:
  * ```kotlin
- * val obj = sdk.uploadBytes("hello, world!".toByteArray())
+ * val obj = sdk.upload(ByteArrayInputStream("hello, world!".toByteArray()))
  * ```
  */
-suspend fun Sdk.uploadBytes(
-    data: ByteArray,
+suspend fun Sdk.upload(
+    r: InputStream,
     options: UploadOptions = UploadOptions(),
-): PinnedObject = upload(PinnedObject(), StreamReader(ByteArrayInputStream(data)), options)
+): PinnedObject = upload(PinnedObject(), StreamReader(r), options)
 
 /**
- * Download an object and return its contents as bytes.
+ * Download an object and write its contents to an [OutputStream].
  *
  * Example:
  * ```kotlin
- * val data = sdk.downloadBytes(obj)
+ * val buffer = ByteArrayOutputStream()
+ * sdk.download(buffer, obj)
  * ```
  */
-suspend fun Sdk.downloadBytes(
+suspend fun Sdk.download(
+    w: OutputStream,
     obj: PinnedObject,
     options: DownloadOptions = DownloadOptions(),
-): ByteArray {
-    val buffer = ByteArrayOutputStream()
-    download(StreamWriter(buffer), obj, options)
-    return buffer.toByteArray()
-}
+) = download(StreamWriter(w), obj, options)
+
+/**
+ * Add data from an [InputStream] to a packed upload.
+ *
+ * Example:
+ * ```kotlin
+ * val size = upload.add(ByteArrayInputStream(data))
+ * ```
+ */
+suspend fun PackedUpload.add(
+    reader: InputStream,
+): ULong = add(StreamReader(reader))

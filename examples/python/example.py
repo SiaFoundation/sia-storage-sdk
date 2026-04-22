@@ -23,7 +23,7 @@ class PrintLogger(Logger):
     def info(self, msg):
         print("INFO", msg)
 
-    def warning(self, msg):
+    def warn(self, msg):
         print("WARNING", msg)
 
     def error(self, msg):

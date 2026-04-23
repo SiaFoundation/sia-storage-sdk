@@ -148,7 +148,7 @@ class Sdk(_Sdk):
             slabs. The caller is responsible for pinning the returned object.
         """
         if isinstance(r, (bytes, bytearray, memoryview)):
-            r = BytesIO(bytes(r))
+            r = BytesIO(r)
         return await super().upload(
             obj,
             BytesReader(r),

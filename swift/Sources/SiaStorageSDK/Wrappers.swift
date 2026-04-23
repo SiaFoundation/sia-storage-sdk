@@ -47,16 +47,20 @@ private final class ClosureProgressCallback: ProgressCallback, @unchecked Sendab
  * let reader = BytesReader(stream: InputStream(fileAtPath: "data.bin")!)
  * ```
  */
+/// Read calls are made sequentially by the SDK; this type is not safe
+/// for concurrent reads from multiple tasks.
 public final class BytesReader: Reader, @unchecked Sendable {
     private let data: Data?
     private var offset: Int = 0
     private let stream: InputStream?
     private let chunkSize: Int
+    private let ownsStream: Bool
 
     public init(data: Data, chunkSize: Int = 1 << 20) {
         self.data = data
         self.stream = nil
         self.chunkSize = chunkSize
+        self.ownsStream = false
     }
 
     public init(stream: InputStream, chunkSize: Int = 1 << 20) {
@@ -65,6 +69,16 @@ public final class BytesReader: Reader, @unchecked Sendable {
         self.chunkSize = chunkSize
         if stream.streamStatus == .notOpen {
             stream.open()
+            self.ownsStream = true
+        } else {
+            self.ownsStream = false
+        }
+    }
+
+    deinit {
+        if ownsStream, let stream = stream,
+           stream.streamStatus != .closed {
+            stream.close()
         }
     }
 
@@ -83,7 +97,14 @@ public final class BytesReader: Reader, @unchecked Sendable {
         let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr in
             stream.read(ptr.baseAddress!, maxLength: chunkSize)
         }
-        if bytesRead <= 0 {
+        if bytesRead < 0 {
+            let err = stream.streamError
+                ?? NSError(domain: NSPOSIXErrorDomain, code: Int(EIO))
+            if ownsStream { stream.close() }
+            throw err
+        }
+        if bytesRead == 0 {
+            if ownsStream { stream.close() }
             return Data()
         }
         return Data(buffer.prefix(bytesRead))
@@ -195,10 +216,9 @@ extension Download {
                     guard let base = raw.baseAddress else { return 0 }
                     return stream.write(base.assumingMemoryBound(to: UInt8.self), maxLength: raw.count)
                 }
-                if written < 0 {
+                if written <= 0 {
                     throw stream.streamError ?? NSError(domain: NSPOSIXErrorDomain, code: Int(EIO))
                 }
-                if written == 0 { break }
                 total += UInt64(written)
                 remaining = remaining.suffix(from: remaining.startIndex + written)
             }

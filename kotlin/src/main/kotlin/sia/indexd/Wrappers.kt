@@ -51,7 +51,7 @@ class BytesReader(
     override suspend fun read(): ByteArray {
         val buffer = ByteArray(chunkSize)
         val bytesRead = stream.read(buffer)
-        return if (bytesRead <= 0) ByteArray(0) else buffer.copyOf(bytesRead)
+        return if (bytesRead < 0) ByteArray(0) else buffer.copyOf(bytesRead)
     }
 }
 

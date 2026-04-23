@@ -61,8 +61,8 @@ fun main() = runBlocking {
 
     // Download streams chunk-by-chunk. `readAll` drains into memory;
     // use `writeTo(OutputStream)` or `asFlow()` for other sinks.
-    val data = sdk.download(obj, DownloadOptions()).readAll()
-    println(String(data))
+    val d = sdk.download(obj, DownloadOptions())
+    try { println(String(d.readAll())) } finally { d.close() }
 }
 ```
 

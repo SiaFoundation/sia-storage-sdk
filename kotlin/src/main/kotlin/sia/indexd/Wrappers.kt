@@ -131,7 +131,7 @@ fun Download.asFlow(): Flow<ByteArray> = flow {
  * Example:
  * ```kotlin
  * val buffer = ByteArrayOutputStream()
- * val d = sdk.download(obj)
+ * val d = sdk.download(obj, DownloadOptions())
  * try { d.writeTo(buffer) } finally { d.close() }
  * ```
  */

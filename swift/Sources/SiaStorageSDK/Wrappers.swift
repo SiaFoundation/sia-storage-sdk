@@ -149,7 +149,7 @@ extension Sdk {
  * with `for try await`:
  *
  * ```swift
- * let d = try sdk.download(object: obj)
+ * let d = try sdk.download(object: obj, options: DownloadOptions())
  * for try await chunk in d {
  *     process(chunk)
  * }
@@ -158,7 +158,7 @@ extension Sdk {
  * Or drain into a single buffer / writer:
  *
  * ```swift
- * let d = try sdk.download(object: obj)
+ * let d = try sdk.download(object: obj, options: DownloadOptions())
  * let data = try await d.readAll()
  * ```
  *
@@ -198,7 +198,7 @@ extension Download {
      * Example:
      * ```swift
      * let out = OutputStream.toMemory()
-     * let d = try sdk.download(object: obj)
+     * let d = try sdk.download(object: obj, options: DownloadOptions())
      * let total = try await d.write(to: out)
      * ```
      */

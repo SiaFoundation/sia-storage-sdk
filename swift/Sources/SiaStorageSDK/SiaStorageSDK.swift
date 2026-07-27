@@ -3382,7 +3382,7 @@ public func FfiConverterTypeAppMetadata_lower(_ value: AppMetadata) -> RustBuffe
  * Provides options for a download operation.
  */
 public struct DownloadOptions {
-    public var maxInflight: UInt8?
+    public var maxBufferedChunks: UInt32?
     public var offset: UInt64?
     public var length: UInt64?
     /**
@@ -3392,11 +3392,11 @@ public struct DownloadOptions {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxInflight: UInt8? = nil, offset: UInt64? = nil, length: UInt64? = nil, 
+    public init(maxBufferedChunks: UInt32? = nil, offset: UInt64? = nil, length: UInt64? = nil, 
         /**
          * Optional callback to report download progress.
          */shardDownloaded: ProgressCallback? = nil) {
-        self.maxInflight = maxInflight
+        self.maxBufferedChunks = maxBufferedChunks
         self.offset = offset
         self.length = length
         self.shardDownloaded = shardDownloaded
@@ -3418,7 +3418,7 @@ public struct FfiConverterTypeDownloadOptions: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadOptions {
         return
             try DownloadOptions(
-                maxInflight: FfiConverterOptionUInt8.read(from: &buf), 
+                maxBufferedChunks: FfiConverterOptionUInt32.read(from: &buf), 
                 offset: FfiConverterOptionUInt64.read(from: &buf), 
                 length: FfiConverterOptionUInt64.read(from: &buf), 
                 shardDownloaded: FfiConverterOptionTypeProgressCallback.read(from: &buf)
@@ -3426,7 +3426,7 @@ public struct FfiConverterTypeDownloadOptions: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: DownloadOptions, into buf: inout [UInt8]) {
-        FfiConverterOptionUInt8.write(value.maxInflight, into: &buf)
+        FfiConverterOptionUInt32.write(value.maxBufferedChunks, into: &buf)
         FfiConverterOptionUInt64.write(value.offset, into: &buf)
         FfiConverterOptionUInt64.write(value.length, into: &buf)
         FfiConverterOptionTypeProgressCallback.write(value.shardDownloaded, into: &buf)
@@ -4057,7 +4057,7 @@ public func FfiConverterTypeSlab_lower(_ value: Slab) -> RustBuffer {
  * Provides options for an upload operation.
  */
 public struct UploadOptions {
-    public var maxInflight: UInt32?
+    public var maxBufferedSlabs: UInt32?
     public var dataShards: UInt8?
     public var parityShards: UInt8?
     /**
@@ -4067,11 +4067,11 @@ public struct UploadOptions {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(maxInflight: UInt32? = nil, dataShards: UInt8? = nil, parityShards: UInt8? = nil, 
+    public init(maxBufferedSlabs: UInt32? = nil, dataShards: UInt8? = nil, parityShards: UInt8? = nil, 
         /**
          * Optional callback to report upload progress.
          */shardUploaded: ProgressCallback? = nil) {
-        self.maxInflight = maxInflight
+        self.maxBufferedSlabs = maxBufferedSlabs
         self.dataShards = dataShards
         self.parityShards = parityShards
         self.shardUploaded = shardUploaded
@@ -4093,7 +4093,7 @@ public struct FfiConverterTypeUploadOptions: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UploadOptions {
         return
             try UploadOptions(
-                maxInflight: FfiConverterOptionUInt32.read(from: &buf), 
+                maxBufferedSlabs: FfiConverterOptionUInt32.read(from: &buf), 
                 dataShards: FfiConverterOptionUInt8.read(from: &buf), 
                 parityShards: FfiConverterOptionUInt8.read(from: &buf), 
                 shardUploaded: FfiConverterOptionTypeProgressCallback.read(from: &buf)
@@ -4101,7 +4101,7 @@ public struct FfiConverterTypeUploadOptions: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: UploadOptions, into buf: inout [UInt8]) {
-        FfiConverterOptionUInt32.write(value.maxInflight, into: &buf)
+        FfiConverterOptionUInt32.write(value.maxBufferedSlabs, into: &buf)
         FfiConverterOptionUInt8.write(value.dataShards, into: &buf)
         FfiConverterOptionUInt8.write(value.parityShards, into: &buf)
         FfiConverterOptionTypeProgressCallback.write(value.shardUploaded, into: &buf)

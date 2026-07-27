@@ -93,7 +93,7 @@ suspend fun Sdk.upload(
  *
  * Example:
  * ```kotlin
- * val d = sdk.download(obj)
+ * val d = sdk.download(obj, DownloadOptions())
  * try { val bytes = d.readAll() } finally { d.close() }
  * ```
  */
@@ -112,7 +112,7 @@ suspend fun Download.readAll(): ByteArray {
  *
  * Example:
  * ```kotlin
- * sdk.download(obj).use { d ->
+ * sdk.download(obj, DownloadOptions()).use { d ->
  *     d.asFlow().collect { chunk -> process(chunk) }
  * }
  * ```

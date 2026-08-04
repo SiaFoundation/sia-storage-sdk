@@ -16,6 +16,7 @@ python/sia_storage/sia_storage/
 
 .gradle/
 *.class
+kotlin/src/main/kotlin/sia/indexd/sia_storage_ffi.kt
 
 build/
 target/

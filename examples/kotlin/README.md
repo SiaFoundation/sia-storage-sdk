@@ -1,4 +1,4 @@
-# sia-indexd
+# Sia Storage SDK for Kotlin - example
 
 Kotlin SDK for interacting with a Sia network indexer.
 
@@ -8,7 +8,7 @@ Add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("tech.sia:siaindexd:0.3.0")
+    implementation("tech.sia:siastoragesdk:0.9.0")
 }
 ```
 
@@ -21,7 +21,7 @@ To build from source, you need Rust, JDK 17+, and Gradle:
 cargo build --release
 
 # Generate Kotlin bindings
-cargo run --bin uniffi-bindgen generate \
+cargo run --release --bin uniffi-bindgen generate \
     --no-format \
     --library target/release/libsia_storage_ffi.so \
     --language kotlin \

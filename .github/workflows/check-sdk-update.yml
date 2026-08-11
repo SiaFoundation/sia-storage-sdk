@@ -1,0 +1,188 @@
+# Opens a PR when a newer stable sia_storage_ffi release is available.
+name: Check SDK Update
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: check-sdk-update
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ secrets.RELEASE_PAT || github.token }}
+  UPSTREAM_REPO: SiaFoundation/sia-sdk-rs
+  TAG_PREFIX: sia_storage_ffi/v
+  BRANCH: chore/update-sia-sdk-rs
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ env.GH_TOKEN }}
+
+      - name: Select branch
+        id: branch
+        run: |
+          set -euo pipefail
+          pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+
+          if [[ -n "$pr" ]]; then
+            git switch -C "$BRANCH" "origin/$BRANCH"
+          else
+            git switch -C "$BRANCH"
+          fi
+
+      - name: Check latest release
+        id: update
+        run: |
+          set -euo pipefail
+          current_rev=$(sed -n 's/^sia_storage_ffi = {.*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
+          current_version=$(sed -n '0,/^version = /s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          : "${current_rev:?Could not read sia_storage_ffi rev from Cargo.toml}"
+          : "${current_version:?Could not read package version from Cargo.toml}"
+
+          latest_version=$(
+            gh release list --repo "$UPSTREAM_REPO" --limit 100 \
+              --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName' |
+              sed -n "s|^$TAG_PREFIX\([0-9]\+\.[0-9]\+\.[0-9]\+\)$|\1|p" |
+              sort -V | tail -n1
+          )
+          : "${latest_version:?No stable $TAG_PREFIX release found}"
+          tag="$TAG_PREFIX$latest_version"
+
+          read -r kind latest_rev < <(
+            gh api "repos/$UPSTREAM_REPO/git/ref/tags/$tag" \
+              --jq '[.object.type, .object.sha] | @tsv'
+          )
+          if [[ "$kind" == tag ]]; then
+            read -r kind latest_rev < <(
+              gh api "repos/$UPSTREAM_REPO/git/tags/$latest_rev" \
+                --jq '[.object.type, .object.sha] | @tsv'
+            )
+          fi
+          if [[ "$kind" != commit || ! "$latest_rev" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "$tag did not resolve to a commit" >&2
+            exit 1
+          fi
+
+          echo "version: $current_version -> $latest_version"
+          echo "rev:     $current_rev -> $latest_rev"
+          if [[ "$current_rev" == "$latest_rev" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$(printf '%s\n%s\n' "$current_version" "$latest_version" | sort -V | tail -n1)" != "$latest_version" ]]; then
+            echo "Refusing to downgrade from $current_version to $latest_version"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "changed=true"
+            echo "current_rev=$current_rev"
+            echo "rev=$latest_rev"
+            echo "version=$latest_version"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update version references
+        if: steps.update.outputs.changed == 'true'
+        env:
+          CURRENT_REV: ${{ steps.update.outputs.current_rev }}
+          REV: ${{ steps.update.outputs.rev }}
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          set -euo pipefail
+          sed -i "s|rev = \"$CURRENT_REV\"|rev = \"$REV\"|" Cargo.toml
+          sed -i "0,/^version = /s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          sed -i -E "s|/releases/download/v[0-9.]+/SiaStorageSDKFFI-[0-9.]+\.xcframework\.zip|/releases/download/v$VERSION/SiaStorageSDKFFI-$VERSION.xcframework.zip|" Package.swift
+          sed -i -E "s|(s\.version[[:space:]]*=[[:space:]]*')[^']*'|\1$VERSION'|" SiaStorageSDK.podspec
+          sed -i -E "s|^version=.*|version=$VERSION|" kotlin/gradle.properties examples/kotlin/gradle.properties
+          sed -i -E "s|tech\.sia:siastoragesdk:[0-9.]+|tech.sia:siastoragesdk:$VERSION|" kotlin/README.md examples/kotlin/README.md
+          sed -i -E \
+            -e "s|(sia-storage-sdk\", from: \")[0-9.]+\"|\1$VERSION\"|" \
+            -e "s|(pod 'SiaStorageSDK', '~> )[0-9.]+'|\1$VERSION'|" \
+            swift/README.md
+
+          grep -qF "rev = \"$REV\"" Cargo.toml
+          for file in Cargo.toml Package.swift SiaStorageSDK.podspec \
+            kotlin/gradle.properties examples/kotlin/gradle.properties \
+            kotlin/README.md examples/kotlin/README.md swift/README.md; do
+            grep -qF "$VERSION" "$file"
+          done
+
+      - name: Install Rust
+        if: steps.update.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+
+      - name: Refresh Cargo.lock
+        if: steps.update.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          set -euo pipefail
+          cargo fetch --target "$(rustc -vV | sed -n 's/^host: //p')"
+          crate_version=$(cargo metadata --format-version 1 |
+            jq -r '.packages[] | select(.name == "sia_storage_ffi") | .version')
+          [[ "$crate_version" == "$VERSION" ]]
+
+      - name: Build and regenerate Swift bindings
+        id: verify
+        if: steps.update.outputs.changed == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cargo build --release
+          cargo run --release --bin uniffi-bindgen -- generate \
+            --library target/release/libsia_storage_ffi.so \
+            --language swift --out-dir build/generated --config swift/uniffi.toml
+          cp build/generated/SiaStorageSDK.swift swift/Sources/SiaStorageSDK/SiaStorageSDK.swift
+
+      - name: Open pull request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          PR: ${{ steps.branch.outputs.pr }}
+          TAG: ${{ steps.update.outputs.tag }}
+          REV: ${{ steps.update.outputs.rev }}
+          VERSION: ${{ steps.update.outputs.version }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        run: |
+          set -euo pipefail
+          title="chore: update sia_storage_ffi to $VERSION"
+          if [[ "$VERIFY_OUTCOME" == success ]]; then
+            result="The Rust build and Swift binding generation passed."
+          else
+            result="The Rust build or Swift binding generation failed; see the workflow logs."
+          fi
+          body=$(cat <<EOF
+          Automated update to [\`$TAG\`](https://github.com/$UPSTREAM_REPO/releases/tag/$TAG) (\`$REV\`).
+
+          $result
+
+          Before merging, review the hand-written Kotlin, Swift, and Python wrappers. The \`Package.swift\` checksum remains unchanged until the new xcframework is published.
+          EOF
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "$title"
+          git push --force-with-lease origin "$BRANCH"
+
+          if [[ -n "$PR" ]]; then
+            gh pr edit "$PR" --title "$title" --body "$body"
+          else
+            gh pr create --base "${{ github.event.repository.default_branch }}" \
+              --head "$BRANCH" --title "$title" --body "$body"
+          fi

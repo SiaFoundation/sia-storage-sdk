@@ -132,6 +132,9 @@ jobs:
           VERSION: ${{ steps.update.outputs.version }}
         run: |
           set -euo pipefail
+          # The new rev can require newer transitive deps than Cargo.lock pins;
+          # fetch alone may not unlock them, so re-resolve the git dep first.
+          cargo update --package sia_storage_ffi || cargo update
           cargo fetch --target "$(rustc -vV | sed -n 's/^host: //p')"
           crate_version=$(cargo metadata --format-version 1 |
             jq -r '.packages[] | select(.name == "sia_storage_ffi") | .version')

@@ -135,6 +135,7 @@ jobs:
           # The new rev can require newer transitive deps than Cargo.lock pins;
           # fetch alone may not unlock them, so re-resolve the git dep first.
           cargo update --package sia_storage_ffi
+          cargo update
           cargo fetch --target "$(rustc -vV | sed -n 's/^host: //p')"
           crate_version=$(cargo metadata --format-version 1 |
             jq -r '.packages[] | select(.name == "sia_storage_ffi") | .version')
@@ -164,9 +165,11 @@ jobs:
           set -euo pipefail
           title="chore: update sia_storage_ffi to $VERSION"
           if [[ "$VERIFY_OUTCOME" == success ]]; then
+            pr_title="$title"
             result="The Rust build and Swift binding generation passed."
           else
-            result="The Rust build or Swift binding generation failed; see the workflow logs."
+            pr_title="$title (build failed)"
+            result="**The Rust build or Swift binding generation failed; see the workflow logs.** The regenerated Swift bindings were therefore not copied into \`swift/Sources\`, so they are stale relative to the new revision. Opened as a draft — do not merge until the build is green."
           fi
           body=$(cat <<EOF
           Automated update to [\`$TAG\`](https://github.com/$UPSTREAM_REPO/releases/tag/$TAG) (\`$REV\`).
@@ -184,8 +187,21 @@ jobs:
           git push --force-with-lease origin "$BRANCH"
 
           if [[ -n "$PR" ]]; then
-            gh pr edit "$PR" --title "$title" --body "$body"
+            gh pr edit "$PR" --title "$pr_title" --body "$body"
+            if [[ "$VERIFY_OUTCOME" == success ]]; then
+              gh pr ready "$PR"
+            else
+              gh pr ready --undo "$PR"
+            fi
           else
+            draft=()
+            [[ "$VERIFY_OUTCOME" == success ]] || draft=(--draft)
             gh pr create --base "${{ github.event.repository.default_branch }}" \
-              --head "$BRANCH" --title "$title" --body "$body"
+              --head "$BRANCH" --title "$pr_title" --body "$body" "${draft[@]}"
           fi
+
+      - name: Fail if verification failed
+        if: steps.update.outputs.changed == 'true' && steps.verify.outcome != 'success'
+        run: |
+          echo "::error::cargo build or Swift binding generation failed; the pull request was opened as a draft."
+          exit 1

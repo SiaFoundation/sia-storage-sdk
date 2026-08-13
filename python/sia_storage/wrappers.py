@@ -9,6 +9,7 @@ plain-callable progress callbacks.
 from __future__ import annotations
 
 import asyncio
+import os
 from io import BytesIO
 from typing import Any, BinaryIO, Callable, Optional, Union
 
@@ -31,6 +32,8 @@ from .sia_storage.sia_storage_ffi import (
 
 
 ProgressHandler = Union[ProgressCallback, Callable[[ShardProgress], Any]]
+
+StrPath = Union[str, os.PathLike]
 
 
 class _CallableProgress(ProgressCallback):
@@ -162,6 +165,34 @@ class Sdk(_Sdk):
         return await super().upload(
             obj,
             BytesReader(r),
+            _prepare_upload_options(options),
+        )
+
+    async def upload_path(
+        self,
+        obj: PinnedObject,
+        path: StrPath,
+        options: Optional[UploadOptions] = None,
+    ) -> PinnedObject:
+        """Uploads the file at `path`. Behaves like upload() otherwise.
+
+        Prefer this to upload() for files: the read stays on the runtime
+        instead of crossing the FFI boundary once per chunk.
+
+        Args:
+            obj: The object to upload into. Use `PinnedObject()` for a new upload.
+            path: The file to upload. Accepts a `str` or any `os.PathLike`
+                (such as `pathlib.Path`).
+            options: The upload options. `shard_uploaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
+
+        Returns:
+            An object containing all slabs from `obj` plus the newly uploaded
+            slabs. The caller is responsible for pinning the returned object.
+        """
+        return await super().upload_path(
+            obj,
+            os.fspath(path),
             _prepare_upload_options(options),
         )
 
@@ -312,6 +343,21 @@ class PackedUpload(_PackedUpload):
         if isinstance(reader, (bytes, bytearray, memoryview)):
             reader = BytesIO(bytes(reader))
         return await super().add(BytesReader(reader))
+
+    async def add_path(self, path: StrPath) -> int:
+        """Adds the file at `path` to the upload.
+
+        Prefer this to add() for files: the read stays on the runtime instead
+        of crossing the FFI boundary once per chunk.
+
+        Args:
+            path: The file to add. Accepts a `str` or any `os.PathLike`
+                (such as `pathlib.Path`).
+
+        Returns:
+            The number of bytes read.
+        """
+        return await super().add_path(os.fspath(path))
 
 
 class BytesReader(Reader):

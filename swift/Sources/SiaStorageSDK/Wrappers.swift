@@ -140,6 +140,25 @@ extension Sdk {
     ) async throws -> PinnedObject {
         return try await upload(object: object, r: BytesReader(stream: stream), options: options)
     }
+
+    /**
+     * Upload the file at a local `URL` to the Sia network.
+     *
+     * Prefer this to `upload` for files: the read stays on the runtime instead
+     * of crossing the FFI boundary once per chunk.
+     *
+     * Example:
+     * ```swift
+     * let obj = try await sdk.uploadPath(object: PinnedObject(), url: URL(fileURLWithPath: "data.bin"))
+     * ```
+     */
+    public func uploadPath(
+        object: PinnedObject,
+        url: URL,
+        options: UploadOptions = UploadOptions()
+    ) async throws -> PinnedObject {
+        return try await uploadPath(object: object, path: url.path, options: options)
+    }
 }
 
 /**
@@ -242,5 +261,20 @@ extension PackedUpload {
 
     public func add(stream: InputStream) async throws -> UInt64 {
         return try await add(reader: BytesReader(stream: stream))
+    }
+
+    /**
+     * Add the file at a local `URL` to a packed upload.
+     *
+     * Prefer this to `add` for files: the read stays on the runtime instead of
+     * crossing the FFI boundary once per chunk.
+     *
+     * Example:
+     * ```swift
+     * let size = try await upload.addPath(url: URL(fileURLWithPath: "data.bin"))
+     * ```
+     */
+    public func addPath(url: URL) async throws -> UInt64 {
+        return try await addPath(path: url.path)
     }
 }

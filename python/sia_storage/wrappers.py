@@ -19,6 +19,7 @@ from .sia_storage.sia_storage_ffi import (
     Download as _Download,
     DownloadOptions,
     PackedUpload as _PackedUpload,
+    PackedUploadOptions,
     PinnedObject,
     ProgressCallback,
     Reader,
@@ -55,6 +56,15 @@ def _wrap_progress(cb):
 def _prepare_upload_options(options: Optional[UploadOptions]) -> UploadOptions:
     if options is None:
         return UploadOptions()
+    options.shard_uploaded = _wrap_progress(options.shard_uploaded)
+    return options
+
+
+def _prepare_packed_upload_options(
+    options: Optional[PackedUploadOptions],
+) -> PackedUploadOptions:
+    if options is None:
+        return PackedUploadOptions()
     options.shard_uploaded = _wrap_progress(options.shard_uploaded)
     return options
 
@@ -155,7 +165,9 @@ class Sdk(_Sdk):
             _prepare_upload_options(options),
         )
 
-    async def upload_packed(self, options: Optional[UploadOptions] = None) -> PackedUpload:
+    async def upload_packed(
+        self, options: Optional[PackedUploadOptions] = None
+    ) -> PackedUpload:
         """Creates a new packed upload.
 
         This allows multiple objects to be packed together for more efficient
@@ -170,7 +182,7 @@ class Sdk(_Sdk):
             A PackedUpload that can be used to add objects and finalize the upload.
         """
         return PackedUpload._from_ffi(
-            await super().upload_packed(_prepare_upload_options(options))
+            await super().upload_packed(_prepare_packed_upload_options(options))
         )
 
     def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:

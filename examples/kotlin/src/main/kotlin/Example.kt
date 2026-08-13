@@ -73,7 +73,7 @@ fun main() = runBlocking {
     println("\nUpload Packing Example...")
 
     start = System.currentTimeMillis()
-    val upload = sdk.uploadPacked(UploadOptions())
+    val upload = sdk.uploadPacked(PackedUploadOptions())
 
     for (i in 0 until 10) {
         val payload = "hello, world $i!"

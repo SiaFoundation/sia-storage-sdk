@@ -10,6 +10,7 @@ from sia_storage import (
     Builder,
     PinnedObject,
     UploadOptions,
+    PackedUploadOptions,
     DownloadOptions,
     set_logger,
     Logger,
@@ -99,7 +100,7 @@ async def main():
     print("\nUpload Packing Example...")
 
     start = datetime.now(timezone.utc)
-    upload = await sdk.upload_packed(UploadOptions())
+    upload = await sdk.upload_packed(PackedUploadOptions())
 
     for i in range(10):
         data = f"hello, world {i}!"

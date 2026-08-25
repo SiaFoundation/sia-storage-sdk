@@ -140,6 +140,41 @@ extension Sdk {
     ) async throws -> PinnedObject {
         return try await upload(object: object, r: BytesReader(stream: stream), options: options)
     }
+
+    /**
+     * Upload the file at `url` to the Sia network.
+     *
+     * Prefer this to the `Data` and `InputStream` overloads for files on disk:
+     * the read stays on the Rust runtime instead of crossing the FFI boundary
+     * once per chunk.
+     *
+     * Example:
+     * ```swift
+     * let obj = try await sdk.upload(
+     *     object: PinnedObject(),
+     *     file: URL(fileURLWithPath: "data.bin")
+     * )
+     * ```
+     */
+    public func upload(
+        object: PinnedObject,
+        file url: URL,
+        options: UploadOptions = UploadOptions()
+    ) async throws -> PinnedObject {
+        return try await uploadPath(object: object, path: url.path, options: options)
+    }
+
+    /**
+     * Create a new packed upload using the default options.
+     *
+     * Example:
+     * ```swift
+     * let upload = try await sdk.uploadPacked()
+     * ```
+     */
+    public func uploadPacked() async throws -> PackedUpload {
+        return try await uploadPacked(options: PackedUploadOptions())
+    }
 }
 
 /**
@@ -242,5 +277,21 @@ extension PackedUpload {
 
     public func add(stream: InputStream) async throws -> UInt64 {
         return try await add(reader: BytesReader(stream: stream))
+    }
+
+    /**
+     * Add the file at `url` to the packed upload.
+     *
+     * Prefer this to the `Data` and `InputStream` overloads for files on disk:
+     * the read stays on the Rust runtime instead of crossing the FFI boundary
+     * once per chunk.
+     *
+     * Example:
+     * ```swift
+     * let size = try await upload.add(file: URL(fileURLWithPath: "data.bin"))
+     * ```
+     */
+    public func add(file url: URL) async throws -> UInt64 {
+        return try await addPath(path: url.path)
     }
 }

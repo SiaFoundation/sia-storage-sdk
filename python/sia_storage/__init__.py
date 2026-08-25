@@ -23,6 +23,7 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     ShardProgress,
     Slab,
     UploadOptions,
+    PackedUploadOptions,
     DownloadOptions,
     # Enums
     AddressProtocol,
@@ -84,6 +85,7 @@ __all__ = [
     "ShardProgress",
     "Slab",
     "UploadOptions",
+    "PackedUploadOptions",
     "DownloadOptions",
     # Enums
     "AddressProtocol",

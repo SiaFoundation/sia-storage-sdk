@@ -1604,9 +1604,20 @@ public protocol PackedUploadProtocol: AnyObject, Sendable {
      *
      * If the reader errors part-way, it's safe to continue calling
      * [add](Self::add); no object is registered for the failed call. Or call
-     * [finalize](Self::finalize) to collect the objects added so far.
+     * [finalize](Self::finalize) to collect the objects added so far. Bytes
+     * read before the error remain in the current slab as padding and stay
+     * counted in [length](Self::length) and [remaining](Self::remaining).
      */
     func add(reader: Reader) async throws  -> UInt64
+    
+    /**
+     * Adds a new object to the upload by opening the file at `path`. Behaves
+     * like [add](Self::add) otherwise.
+     *
+     * Prefer this to [add](Self::add) for files: the read stays on the runtime
+     * instead of crossing the FFI boundary once per chunk.
+     */
+    func addPath(path: String) async throws  -> UInt64
     
     /**
      * Cancels the upload. This will immediately cancel any in-progress [add](Self::add) or [finalize](Self::finalize) operations and prevent
@@ -1707,7 +1718,9 @@ open class PackedUpload: PackedUploadProtocol, @unchecked Sendable {
      *
      * If the reader errors part-way, it's safe to continue calling
      * [add](Self::add); no object is registered for the failed call. Or call
-     * [finalize](Self::finalize) to collect the objects added so far.
+     * [finalize](Self::finalize) to collect the objects added so far. Bytes
+     * read before the error remain in the current slab as padding and stay
+     * counted in [length](Self::length) and [remaining](Self::remaining).
      */
 open func add(reader: Reader)async throws  -> UInt64  {
     return
@@ -1716,6 +1729,30 @@ open func add(reader: Reader)async throws  -> UInt64  {
                 uniffi_sia_storage_ffi_fn_method_packedupload_add(
                     self.uniffiCloneHandle(),
                     FfiConverterTypeReader_lower(reader)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeUploadError_lift
+        )
+}
+    
+    /**
+     * Adds a new object to the upload by opening the file at `path`. Behaves
+     * like [add](Self::add) otherwise.
+     *
+     * Prefer this to [add](Self::add) for files: the read stays on the runtime
+     * instead of crossing the FFI boundary once per chunk.
+     */
+open func addPath(path: String)async throws  -> UInt64  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_packedupload_add_path(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(path)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
@@ -2702,12 +2739,30 @@ public protocol SdkProtocol: AnyObject, Sendable {
      * for more efficient uploads. The returned `PackedUpload` can be used to add objects to the upload, and then finalized to get the resulting objects.
      *
      * # Arguments
-     * * `options` - The [UploadOptions] to use for the upload.
+     * * `options` - The [PackedUploadOptions] to use for the upload.
      *
      * # Returns
      * A [PackedUpload] that can be used to add objects and finalize the upload.
      */
-    func uploadPacked(options: UploadOptions) async throws  -> PackedUpload
+    func uploadPacked(options: PackedUploadOptions) async throws  -> PackedUpload
+    
+    /**
+     * Uploads the file at `path`. Behaves like [upload](Self::upload)
+     * otherwise.
+     *
+     * Prefer this to [upload](Self::upload) for files: the read stays on the
+     * runtime instead of crossing the FFI boundary once per chunk.
+     *
+     * # Arguments
+     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `path` - The path of the file to upload.
+     * * `options` - The [UploadOptions] to use for the upload.
+     *
+     * # Returns
+     * A new object containing all slabs from the input object plus the newly
+     * uploaded slabs. The caller must pin the object to the indexer afterward.
+     */
+    func uploadPath(object: PinnedObject, path: String, options: UploadOptions) async throws  -> PinnedObject
     
 }
 open class Sdk: SdkProtocol, @unchecked Sendable {
@@ -3052,24 +3107,57 @@ open func upload(object: PinnedObject, r: Reader, options: UploadOptions)async t
      * for more efficient uploads. The returned `PackedUpload` can be used to add objects to the upload, and then finalized to get the resulting objects.
      *
      * # Arguments
-     * * `options` - The [UploadOptions] to use for the upload.
+     * * `options` - The [PackedUploadOptions] to use for the upload.
      *
      * # Returns
      * A [PackedUpload] that can be used to add objects and finalize the upload.
      */
-open func uploadPacked(options: UploadOptions)async throws  -> PackedUpload  {
+open func uploadPacked(options: PackedUploadOptions)async throws  -> PackedUpload  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_method_sdk_upload_packed(
                     self.uniffiCloneHandle(),
-                    FfiConverterTypeUploadOptions_lower(options)
+                    FfiConverterTypePackedUploadOptions_lower(options)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypePackedUpload_lift,
+            errorHandler: FfiConverterTypeUploadError_lift
+        )
+}
+    
+    /**
+     * Uploads the file at `path`. Behaves like [upload](Self::upload)
+     * otherwise.
+     *
+     * Prefer this to [upload](Self::upload) for files: the read stays on the
+     * runtime instead of crossing the FFI boundary once per chunk.
+     *
+     * # Arguments
+     * * `object` - The object to upload into. Use [PinnedObject::new] for new uploads.
+     * * `path` - The path of the file to upload.
+     * * `options` - The [UploadOptions] to use for the upload.
+     *
+     * # Returns
+     * A new object containing all slabs from the input object plus the newly
+     * uploaded slabs. The caller must pin the object to the indexer afterward.
+     */
+open func uploadPath(object: PinnedObject, path: String, options: UploadOptions)async throws  -> PinnedObject  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_upload_path(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypePinnedObject_lower(object),FfiConverterString.lower(path),FfiConverterTypeUploadOptions_lower(options)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeUploadError_lift
         )
 }
@@ -3707,6 +3795,77 @@ public func FfiConverterTypeObjectsCursor_lower(_ value: ObjectsCursor) -> RustB
 
 
 /**
+ * Provides options for a packed upload operation.
+ */
+public struct PackedUploadOptions {
+    public var maxBufferedSlabs: UInt32?
+    public var dataShards: UInt8?
+    public var parityShards: UInt8?
+    /**
+     * Optional callback to report upload progress.
+     */
+    public var shardUploaded: ProgressCallback?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(maxBufferedSlabs: UInt32? = nil, dataShards: UInt8? = nil, parityShards: UInt8? = nil, 
+        /**
+         * Optional callback to report upload progress.
+         */shardUploaded: ProgressCallback? = nil) {
+        self.maxBufferedSlabs = maxBufferedSlabs
+        self.dataShards = dataShards
+        self.parityShards = parityShards
+        self.shardUploaded = shardUploaded
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PackedUploadOptions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePackedUploadOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PackedUploadOptions {
+        return
+            try PackedUploadOptions(
+                maxBufferedSlabs: FfiConverterOptionUInt32.read(from: &buf), 
+                dataShards: FfiConverterOptionUInt8.read(from: &buf), 
+                parityShards: FfiConverterOptionUInt8.read(from: &buf), 
+                shardUploaded: FfiConverterOptionTypeProgressCallback.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PackedUploadOptions, into buf: inout [UInt8]) {
+        FfiConverterOptionUInt32.write(value.maxBufferedSlabs, into: &buf)
+        FfiConverterOptionUInt8.write(value.dataShards, into: &buf)
+        FfiConverterOptionUInt8.write(value.parityShards, into: &buf)
+        FfiConverterOptionTypeProgressCallback.write(value.shardUploaded, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePackedUploadOptions_lift(_ buf: RustBuffer) throws -> PackedUploadOptions {
+    return try FfiConverterTypePackedUploadOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePackedUploadOptions_lower(_ value: PackedUploadOptions) -> RustBuffer {
+    return FfiConverterTypePackedUploadOptions.lower(value)
+}
+
+
+/**
  * A sector stored on a specific host.
  */
 public struct PinnedSector: Equatable, Hashable {
@@ -3767,6 +3926,7 @@ public func FfiConverterTypePinnedSector_lower(_ value: PinnedSector) -> RustBuf
  * A PinnedSlab represents a slab that has been pinned to the indexer.
  */
 public struct PinnedSlab: Equatable, Hashable {
+    public var version: UInt8
     public var id: String
     public var encryptionKey: Data
     public var minShards: UInt8
@@ -3774,7 +3934,8 @@ public struct PinnedSlab: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, encryptionKey: Data, minShards: UInt8, sectors: [PinnedSector]) {
+    public init(version: UInt8, id: String, encryptionKey: Data, minShards: UInt8, sectors: [PinnedSector]) {
+        self.version = version
         self.id = id
         self.encryptionKey = encryptionKey
         self.minShards = minShards
@@ -3797,6 +3958,7 @@ public struct FfiConverterTypePinnedSlab: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PinnedSlab {
         return
             try PinnedSlab(
+                version: FfiConverterUInt8.read(from: &buf), 
                 id: FfiConverterString.read(from: &buf), 
                 encryptionKey: FfiConverterData.read(from: &buf), 
                 minShards: FfiConverterUInt8.read(from: &buf), 
@@ -3805,6 +3967,7 @@ public struct FfiConverterTypePinnedSlab: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: PinnedSlab, into buf: inout [UInt8]) {
+        FfiConverterUInt8.write(value.version, into: &buf)
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterData.write(value.encryptionKey, into: &buf)
         FfiConverterUInt8.write(value.minShards, into: &buf)
@@ -3988,6 +4151,7 @@ public func FfiConverterTypeShardProgress_lower(_ value: ShardProgress) -> RustB
  * A Slab represents a contiguous erasure-coded segment of a file stored on the Sia network.
  */
 public struct Slab: Equatable, Hashable {
+    public var version: UInt8
     public var encryptionKey: Data
     public var minShards: UInt8
     public var sectors: [PinnedSector]
@@ -3996,7 +4160,8 @@ public struct Slab: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(encryptionKey: Data, minShards: UInt8, sectors: [PinnedSector], offset: UInt32, length: UInt32) {
+    public init(version: UInt8, encryptionKey: Data, minShards: UInt8, sectors: [PinnedSector], offset: UInt32, length: UInt32) {
+        self.version = version
         self.encryptionKey = encryptionKey
         self.minShards = minShards
         self.sectors = sectors
@@ -4020,6 +4185,7 @@ public struct FfiConverterTypeSlab: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Slab {
         return
             try Slab(
+                version: FfiConverterUInt8.read(from: &buf), 
                 encryptionKey: FfiConverterData.read(from: &buf), 
                 minShards: FfiConverterUInt8.read(from: &buf), 
                 sectors: FfiConverterSequenceTypePinnedSector.read(from: &buf), 
@@ -4029,6 +4195,7 @@ public struct FfiConverterTypeSlab: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: Slab, into buf: inout [UInt8]) {
+        FfiConverterUInt8.write(value.version, into: &buf)
         FfiConverterData.write(value.encryptionKey, into: &buf)
         FfiConverterUInt8.write(value.minShards, into: &buf)
         FfiConverterSequenceTypePinnedSector.write(value.sectors, into: &buf)
@@ -4061,6 +4228,11 @@ public struct UploadOptions {
     public var dataShards: UInt8?
     public var parityShards: UInt8?
     /**
+     * When set, overwrites the object's existing data starting at this byte
+     * offset instead of appending.
+     */
+    public var startOffset: UInt64?
+    /**
      * Optional callback to report upload progress.
      */
     public var shardUploaded: ProgressCallback?
@@ -4069,11 +4241,16 @@ public struct UploadOptions {
     // declare one manually.
     public init(maxBufferedSlabs: UInt32? = nil, dataShards: UInt8? = nil, parityShards: UInt8? = nil, 
         /**
+         * When set, overwrites the object's existing data starting at this byte
+         * offset instead of appending.
+         */startOffset: UInt64? = nil, 
+        /**
          * Optional callback to report upload progress.
          */shardUploaded: ProgressCallback? = nil) {
         self.maxBufferedSlabs = maxBufferedSlabs
         self.dataShards = dataShards
         self.parityShards = parityShards
+        self.startOffset = startOffset
         self.shardUploaded = shardUploaded
     }
 
@@ -4096,6 +4273,7 @@ public struct FfiConverterTypeUploadOptions: FfiConverterRustBuffer {
                 maxBufferedSlabs: FfiConverterOptionUInt32.read(from: &buf), 
                 dataShards: FfiConverterOptionUInt8.read(from: &buf), 
                 parityShards: FfiConverterOptionUInt8.read(from: &buf), 
+                startOffset: FfiConverterOptionUInt64.read(from: &buf), 
                 shardUploaded: FfiConverterOptionTypeProgressCallback.read(from: &buf)
         )
     }
@@ -4104,6 +4282,7 @@ public struct FfiConverterTypeUploadOptions: FfiConverterRustBuffer {
         FfiConverterOptionUInt32.write(value.maxBufferedSlabs, into: &buf)
         FfiConverterOptionUInt8.write(value.dataShards, into: &buf)
         FfiConverterOptionUInt8.write(value.parityShards, into: &buf)
+        FfiConverterOptionUInt64.write(value.startOffset, into: &buf)
         FfiConverterOptionTypeProgressCallback.write(value.shardUploaded, into: &buf)
     }
 }
@@ -5572,7 +5751,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_download_read() != 37314) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_packedupload_add() != 51351) {
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_add() != 50710) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_add_path() != 54420) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_packedupload_cancel() != 64519) {
@@ -5662,7 +5844,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_upload() != 27415) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 37714) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 6247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_path() != 16130) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_appkey_export() != 16630) {

@@ -96,7 +96,7 @@ struct SiaStorageSDKExample {
 
             // Packed upload example
             start = Date()
-            let upload = try await sdk.uploadPacked(options: UploadOptions())
+            let upload = try await sdk.uploadPacked(options: PackedUploadOptions())
 
             for i in 0..<10 {
                 let size = try await upload.add(data: "hello, world \(i)!".data(using: .utf8)!)

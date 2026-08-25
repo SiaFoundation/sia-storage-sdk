@@ -19,6 +19,7 @@ from .sia_storage.sia_storage_ffi import (
     Download as _Download,
     DownloadOptions,
     PackedUpload as _PackedUpload,
+    PackedUploadOptions,
     PinnedObject,
     ProgressCallback,
     Reader,
@@ -55,6 +56,15 @@ def _wrap_progress(cb):
 def _prepare_upload_options(options: Optional[UploadOptions]) -> UploadOptions:
     if options is None:
         return UploadOptions()
+    options.shard_uploaded = _wrap_progress(options.shard_uploaded)
+    return options
+
+
+def _prepare_packed_upload_options(
+    options: Optional[PackedUploadOptions],
+) -> PackedUploadOptions:
+    if options is None:
+        return PackedUploadOptions()
     options.shard_uploaded = _wrap_progress(options.shard_uploaded)
     return options
 
@@ -155,7 +165,30 @@ class Sdk(_Sdk):
             _prepare_upload_options(options),
         )
 
-    async def upload_packed(self, options: Optional[UploadOptions] = None) -> PackedUpload:
+    async def upload_path(
+        self,
+        obj: PinnedObject,
+        path: str,
+        options: Optional[UploadOptions] = None,
+    ) -> PinnedObject:
+        """Uploads the file at `path` to the Sia network.
+
+        Prefer this to `upload` for files on disk: the read stays on the Rust
+        runtime instead of crossing the FFI boundary once per chunk.
+
+        Args:
+            obj: The object to upload into. Use `PinnedObject()` for a new upload.
+            path: The path of the file to upload.
+            options: The upload options. `shard_uploaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
+
+        Returns:
+            An object containing all slabs from `obj` plus the newly uploaded
+            slabs. The caller is responsible for pinning the returned object.
+        """
+        return await super().upload_path(obj, str(path), _prepare_upload_options(options))
+
+    async def upload_packed(self, options: Optional[PackedUploadOptions] = None) -> PackedUpload:
         """Creates a new packed upload.
 
         This allows multiple objects to be packed together for more efficient
@@ -163,14 +196,14 @@ class Sdk(_Sdk):
         upload, and then finalized to get the resulting objects.
 
         Args:
-            options: The upload options. `shard_uploaded` accepts either a
-                ProgressCallback or any callable taking a ShardProgress.
+            options: The packed upload options. `shard_uploaded` accepts either
+                a ProgressCallback or any callable taking a ShardProgress.
 
         Returns:
             A PackedUpload that can be used to add objects and finalize the upload.
         """
         return PackedUpload._from_ffi(
-            await super().upload_packed(_prepare_upload_options(options))
+            await super().upload_packed(_prepare_packed_upload_options(options))
         )
 
     def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
@@ -300,6 +333,20 @@ class PackedUpload(_PackedUpload):
         if isinstance(reader, (bytes, bytearray, memoryview)):
             reader = BytesIO(bytes(reader))
         return await super().add(BytesReader(reader))
+
+    async def add_path(self, path: str) -> int:
+        """Adds the file at `path` to the upload.
+
+        Prefer this to `add` for files on disk: the read stays on the Rust
+        runtime instead of crossing the FFI boundary once per chunk.
+
+        Args:
+            path: The path of the file to add.
+
+        Returns:
+            The number of bytes read.
+        """
+        return await super().add_path(str(path))
 
 
 class BytesReader(Reader):

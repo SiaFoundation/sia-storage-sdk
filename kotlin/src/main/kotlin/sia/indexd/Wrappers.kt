@@ -10,6 +10,7 @@ package sia.indexd
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import kotlinx.coroutines.flow.Flow
@@ -87,6 +88,24 @@ suspend fun Sdk.upload(
     data: ByteArray,
     options: UploadOptions = UploadOptions(),
 ): PinnedObject = upload(obj, BytesReader(ByteArrayInputStream(data)), options)
+
+/**
+ * Upload a [File] to the Sia network.
+ *
+ * Prefer this to the [InputStream] and [ByteArray] overloads for files on disk:
+ * the read stays on the Rust runtime instead of crossing the FFI boundary once
+ * per chunk.
+ *
+ * Example:
+ * ```kotlin
+ * val obj = sdk.upload(PinnedObject(), File("data.bin"))
+ * ```
+ */
+suspend fun Sdk.upload(
+    obj: PinnedObject,
+    file: File,
+    options: UploadOptions = UploadOptions(),
+): PinnedObject = uploadPath(obj, file.path, options)
 
 /**
  * Reads the entire remaining stream into memory and returns it.
@@ -169,3 +188,19 @@ suspend fun PackedUpload.add(
 suspend fun PackedUpload.add(
     data: ByteArray,
 ): ULong = add(BytesReader(ByteArrayInputStream(data)))
+
+/**
+ * Add a [File] to a packed upload.
+ *
+ * Prefer this to the [InputStream] and [ByteArray] overloads for files on disk:
+ * the read stays on the Rust runtime instead of crossing the FFI boundary once
+ * per chunk.
+ *
+ * Example:
+ * ```kotlin
+ * val size = upload.add(File("data.bin"))
+ * ```
+ */
+suspend fun PackedUpload.add(
+    file: File,
+): ULong = addPath(file.path)

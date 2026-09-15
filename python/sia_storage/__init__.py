@@ -9,11 +9,14 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     # Classes/Objects
     AppKey,
     PinnedObject,
+    SharingKey,
     # Records
     Account,
     App,
     AppMetadata,
     Host,
+    KeyRecord,
+    KeyStats,
     NetAddress,
     ObjectEvent,
     ObjectsCursor,
@@ -50,6 +53,7 @@ from sia_storage.wrappers import (
     Download,
     PackedUpload,
     Sdk,
+    SharedSdk,
 )
 
 # Aliases for common naming conventions
@@ -71,11 +75,15 @@ __all__ = [
     "PackedUpload",
     "Download",
     "BytesReader",
+    "SharedSdk",
+    "SharingKey",
     # Records
     "Account",
     "App",
     "AppMetadata",
     "Host",
+    "KeyRecord",
+    "KeyStats",
     "NetAddress",
     "ObjectEvent",
     "ObjectsCursor",

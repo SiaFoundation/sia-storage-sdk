@@ -175,6 +175,85 @@ extension Sdk {
     public func uploadPacked() async throws -> PackedUpload {
         return try await uploadPacked(options: PackedUploadOptions())
     }
+
+    /**
+     * Create a sharing key that never expires.
+     *
+     * Attach objects to it with `shareObject(key:object:)` and hand out
+     * `key.seed()` so recipients can connect with `SharedSdk.connect`.
+     *
+     * Example:
+     * ```swift
+     * let key = try await sdk.createSharingKey(description: "holiday photos")
+     * try await sdk.shareObject(key: key, object: obj)
+     * ```
+     */
+    public func createSharingKey(description: String) async throws -> SharingKey {
+        return try await createSharingKey(description: description, expiresAt: nil)
+    }
+
+    /**
+     * List the account's sharing keys, most recently created first.
+     *
+     * Example:
+     * ```swift
+     * for record in try await sdk.sharingKeys() {
+     *     print("\(record.description): \(record.stats.objectCount) objects")
+     * }
+     * ```
+     */
+    public func sharingKeys() async throws -> [KeyRecord] {
+        return try await sharingKeys(offset: 0, limit: 100)
+    }
+
+    /**
+     * List and decrypt the objects attached to a sharing key.
+     *
+     * Example:
+     * ```swift
+     * let objects = try await sdk.sharedObjects(key: key)
+     * ```
+     */
+    public func sharedObjects(key: SharingKey) async throws -> [PinnedObject] {
+        return try await sharedObjects(key: key, offset: 0, limit: 100)
+    }
+}
+
+/**
+ * Convenience readers for the read-only `SharedSdk`.
+ *
+ * Example:
+ * ```swift
+ * let shared = try await SharedSdk.connect(indexerUrl: "https://sia.storage", seed: key.seed())
+ * let objects = try await shared.objects()
+ * let data = try await shared.download(object: objects[0]).readAll()
+ * ```
+ */
+extension SharedSdk {
+    /**
+     * List and decrypt a page of the objects the key grants access to.
+     *
+     * Example:
+     * ```swift
+     * let objects = try await shared.objects()
+     * ```
+     */
+    public func objects() async throws -> [PinnedObject] {
+        return try await objects(offset: 0, limit: 100)
+    }
+
+    /**
+     * Stream a shared object's data using the default download options.
+     *
+     * Example:
+     * ```swift
+     * let d = try shared.download(object: obj)
+     * let data = try await d.readAll()
+     * ```
+     */
+    public func download(object: PinnedObject) throws -> Download {
+        return try download(object: object, options: DownloadOptions())
+    }
 }
 
 /**
@@ -259,6 +338,23 @@ extension Download {
             }
         }
         return total
+    }
+
+    /**
+     * Writes the whole download to `url`, creating or truncating the file, and
+     * returns the number of bytes written.
+     *
+     * Prefer this to `readAll()` or `write(to:)` when the destination is a
+     * local file: the data never crosses the FFI boundary.
+     *
+     * Example:
+     * ```swift
+     * let d = try sdk.download(object: obj, options: DownloadOptions())
+     * let total = try await d.write(to: URL(fileURLWithPath: "out.bin"))
+     * ```
+     */
+    public func write(to url: URL) async throws -> UInt64 {
+        return try await writeToPath(path: url.path)
     }
 }
 

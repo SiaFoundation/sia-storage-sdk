@@ -204,3 +204,76 @@ suspend fun PackedUpload.add(
 suspend fun PackedUpload.add(
     file: File,
 ): ULong = addPath(file.path)
+
+/**
+ * Writes the whole download to a [File], creating or truncating it, and returns
+ * the number of bytes written.
+ *
+ * Prefer this to [readAll] and [writeTo] when the destination is a local file:
+ * the data never crosses the FFI boundary.
+ *
+ * Example:
+ * ```kotlin
+ * val d = sdk.download(obj, DownloadOptions())
+ * try { d.writeTo(File("out.bin")) } finally { d.close() }
+ * ```
+ */
+suspend fun Download.writeTo(file: File): ULong = writeToPath(file.path)
+
+/**
+ * Create a sharing key that never expires.
+ *
+ * Attach objects to it with [Sdk.shareObject] and hand out [SharingKey.seed] so
+ * recipients can connect with `SharedSdk.connect`.
+ *
+ * Example:
+ * ```kotlin
+ * val key = sdk.createSharingKey("holiday photos")
+ * sdk.shareObject(key, obj)
+ * ```
+ */
+suspend fun Sdk.createSharingKey(description: String): SharingKey =
+    createSharingKey(description, null)
+
+/**
+ * List the account's sharing keys, most recently created first.
+ *
+ * Example:
+ * ```kotlin
+ * sdk.sharingKeys().forEach { println("${it.description}: ${it.stats.objectCount} objects") }
+ * ```
+ */
+suspend fun Sdk.sharingKeys(): List<KeyRecord> = sharingKeys(0u, 100u)
+
+/**
+ * List and decrypt the objects attached to a sharing key.
+ *
+ * Example:
+ * ```kotlin
+ * val objects = sdk.sharedObjects(key)
+ * ```
+ */
+suspend fun Sdk.sharedObjects(key: SharingKey): List<PinnedObject> =
+    sharedObjects(key, 0u, 100u)
+
+/**
+ * List and decrypt a page of the objects a sharing key grants access to.
+ *
+ * Example:
+ * ```kotlin
+ * val shared = SharedSdk.connect("https://sia.storage", key.seed())
+ * val objects = shared.objects()
+ * ```
+ */
+suspend fun SharedSdk.objects(): List<PinnedObject> = objects(0u, 100u)
+
+/**
+ * Stream a shared object's data using the default download options.
+ *
+ * Example:
+ * ```kotlin
+ * val shared = SharedSdk.connect("https://sia.storage", key.seed())
+ * shared.download(obj).use { d -> d.readAll() }
+ * ```
+ */
+fun SharedSdk.download(obj: PinnedObject): Download = download(obj, DownloadOptions())

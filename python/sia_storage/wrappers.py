@@ -18,6 +18,7 @@ from .sia_storage.sia_storage_ffi import (
     Builder as _Builder,
     Download as _Download,
     DownloadOptions,
+    KeyRecord,
     PackedUpload as _PackedUpload,
     PackedUploadOptions,
     PinnedObject,
@@ -25,6 +26,8 @@ from .sia_storage.sia_storage_ffi import (
     Reader,
     Sdk as _Sdk,
     ShardProgress,
+    SharedSdk as _SharedSdk,
+    SharingKey,
     UploadOptions,
     uniffi_set_event_loop,
 )
@@ -111,10 +114,24 @@ class Builder(_Builder):
         Once registered, returns an Sdk instance that can be used to interact
         with the indexer.
 
+        A different recovery phrase registers a new application key even when
+        reconnecting() is True.
+
         Args:
             mnemonic: The user's mnemonic phrase used to derive the application key.
         """
         return Sdk._from_ffi(await super().register(mnemonic))
+
+    async def connect_pre_authorized(self, pre_authorized_key: bytes, mnemonic: str) -> Sdk:
+        """Connects using a pre-authorized key, bypassing the interactive approval flow.
+
+        Args:
+            pre_authorized_key: The 32-byte pre-authorized private key seed.
+            mnemonic: The user's mnemonic phrase used to derive the application key.
+        """
+        return Sdk._from_ffi(
+            await super().connect_pre_authorized(bytes(pre_authorized_key), mnemonic)
+        )
 
 
 class Sdk(_Sdk):
@@ -223,6 +240,27 @@ class Sdk(_Sdk):
         """
         return Download(super().download(obj, _prepare_download_options(options)))
 
+    async def sharing_keys(self, offset: int = 0, limit: int = 100) -> list[KeyRecord]:
+        """Lists the account's sharing keys, most recently created first.
+
+        Args:
+            offset: The number of keys to skip.
+            limit: The maximum number of keys to return.
+        """
+        return await super().sharing_keys(offset, limit)
+
+    async def shared_objects(
+        self, key: SharingKey, offset: int = 0, limit: int = 100
+    ) -> list[PinnedObject]:
+        """Lists and decrypts the objects attached to a sharing key.
+
+        Args:
+            key: The sharing key whose objects to list.
+            offset: The number of objects to skip.
+            limit: The maximum number of objects to return.
+        """
+        return await super().shared_objects(key, offset, limit)
+
 
 class Download:
     """An async stream of bytes from a downloaded object.
@@ -300,6 +338,79 @@ class Download:
     async def close(self) -> None:
         """Cancels the download and releases any in-flight recovery tasks."""
         await self._inner.cancel()
+
+    async def write_to_path(self, path: str) -> int:
+        """Writes the whole download to the file at `path`, creating or truncating it.
+
+        Prefer this to read()/write_to() when the destination is a local file:
+        the data never crosses the FFI boundary.
+
+        Args:
+            path: The path of the file to write.
+
+        Returns:
+            The total number of bytes written.
+        """
+        return await self._inner.write_to_path(str(path))
+
+
+class SharedSdk(_SharedSdk):
+    """A read-only SDK for the objects a sharing key grants access to.
+
+    Unlike Sdk, it authenticates with a sharing key rather than an app key and
+    cannot upload, pin, or delete. Downloads are paid for by the key's owner.
+
+    Example:
+        shared = await SharedSdk.connect("https://sia.storage", seed)
+        obj = await shared.object(object_id)
+        async with shared.download(obj) as d:
+            data = await d.read_all()
+    """
+
+    def __init__(self, *args, **kwargs):
+        raise ValueError("Use SharedSdk.connect() to create a SharedSdk instance")
+
+    @classmethod
+    def _from_ffi(cls, inner: _SharedSdk):
+        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
+
+    @classmethod
+    async def connect(cls, indexer_url: str, seed: bytes) -> SharedSdk:
+        """Connects to `indexer_url` as the recipient of a sharing key.
+
+        Args:
+            indexer_url: The URL of the indexer hosting the shared objects.
+            seed: The 32-byte sharing key seed the key's owner handed out.
+        """
+        try:
+            uniffi_set_event_loop(asyncio.get_running_loop())
+        except RuntimeError:
+            pass  # No running loop yet
+        return cls._from_ffi(await _SharedSdk.connect(indexer_url, bytes(seed)))
+
+    def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
+        """Streams a shared object's data, paying hosts with the owner's tokens.
+
+        Returns a Download handle with the same semantics as Sdk.download().
+
+        Args:
+            obj: The shared object to download.
+            options: The download options. `shard_downloaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
+
+        Returns:
+            A Download handle.
+        """
+        return Download(super().download(obj, _prepare_download_options(options)))
+
+    async def objects(self, offset: int = 0, limit: int = 100) -> list[PinnedObject]:
+        """Lists and decrypts a page of the objects the key grants access to.
+
+        Args:
+            offset: The number of objects to skip.
+            limit: The maximum number of objects to return.
+        """
+        return await super().objects(offset, limit)
 
 
 class PackedUpload(_PackedUpload):

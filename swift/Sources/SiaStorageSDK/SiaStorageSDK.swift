@@ -842,6 +842,16 @@ public func FfiConverterTypeAppKey_lower(_ value: AppKey) -> UInt64 {
 public protocol BuilderProtocol: AnyObject, Sendable {
     
     /**
+     * Connects using a pre-authorized key, bypassing the interactive approval
+     * flow, and returns an [Sdk] directly.
+     *
+     * # Arguments
+     * * `pre_authorized_key` - The 32-byte pre-authorized private key seed.
+     * * `mnemonic` - The user's mnemonic phrase used to derive the app key.
+     */
+    func connectPreAuthorized(preAuthorizedKey: Data, mnemonic: String) async throws  -> Sdk
+    
+    /**
      * Attempts to connect using the provided app key.
      * If the app key is valid, returns Some([Sdk]), otherwise returns None.
      *
@@ -853,9 +863,33 @@ public protocol BuilderProtocol: AnyObject, Sendable {
     func connected(appKey: AppKey) async throws  -> Sdk?
     
     /**
+     * Returns whether `mnemonic` derives an application key that is already
+     * registered with the indexer. Unlike [Builder::register], the builder
+     * remains usable. Only available after [Builder::wait_for_approval].
+     *
+     * # Arguments
+     * * `mnemonic` - The user's mnemonic phrase used to derive the application key.
+     */
+    func matchesExistingAppKey(mnemonic: String) async throws  -> Bool
+    
+    /**
+     * Returns whether the connect key the user approved with already has an
+     * account for this application.
+     *
+     * The connect key may have accounts under more than one recovery phrase.
+     * Use [Builder::matches_existing_app_key] to check a particular phrase.
+     *
+     * It is only available after [Builder::wait_for_approval] has returned.
+     */
+    func reconnecting() throws  -> Bool
+    
+    /**
      * Registers the application with the indexer using the provided mnemonic.
      * Once registered, returns an [Sdk] instance that can be used to interact
      * with the indexer.
+     *
+     * A different recovery phrase registers a new application key even when
+     * [Builder::reconnecting] is true.
      *
      * # Arguments
      * * `mnemonic` - The user's mnemonic phrase used to derive the application key.
@@ -957,6 +991,31 @@ public convenience init(indexerUrl: String, appMeta: AppMetadata)throws  {
 
     
     /**
+     * Connects using a pre-authorized key, bypassing the interactive approval
+     * flow, and returns an [Sdk] directly.
+     *
+     * # Arguments
+     * * `pre_authorized_key` - The 32-byte pre-authorized private key seed.
+     * * `mnemonic` - The user's mnemonic phrase used to derive the app key.
+     */
+open func connectPreAuthorized(preAuthorizedKey: Data, mnemonic: String)async throws  -> Sdk  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_builder_connect_pre_authorized(
+                    self.uniffiCloneHandle(),
+                    FfiConverterData.lower(preAuthorizedKey),FfiConverterString.lower(mnemonic)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypeSdk_lift,
+            errorHandler: FfiConverterTypeBuilderError_lift
+        )
+}
+    
+    /**
      * Attempts to connect using the provided app key.
      * If the app key is valid, returns Some([Sdk]), otherwise returns None.
      *
@@ -983,9 +1042,54 @@ open func connected(appKey: AppKey)async throws  -> Sdk?  {
 }
     
     /**
+     * Returns whether `mnemonic` derives an application key that is already
+     * registered with the indexer. Unlike [Builder::register], the builder
+     * remains usable. Only available after [Builder::wait_for_approval].
+     *
+     * # Arguments
+     * * `mnemonic` - The user's mnemonic phrase used to derive the application key.
+     */
+open func matchesExistingAppKey(mnemonic: String)async throws  -> Bool  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_builder_matches_existing_app_key(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(mnemonic)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_i8,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_i8,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeBuilderError_lift
+        )
+}
+    
+    /**
+     * Returns whether the connect key the user approved with already has an
+     * account for this application.
+     *
+     * The connect key may have accounts under more than one recovery phrase.
+     * Use [Builder::matches_existing_app_key] to check a particular phrase.
+     *
+     * It is only available after [Builder::wait_for_approval] has returned.
+     */
+open func reconnecting()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeBuilderError_lift) {
+    uniffi_sia_storage_ffi_fn_method_builder_reconnecting(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
      * Registers the application with the indexer using the provided mnemonic.
      * Once registered, returns an [Sdk] instance that can be used to interact
      * with the indexer.
+     *
+     * A different recovery phrase registers a new application key even when
+     * [Builder::reconnecting] is true.
      *
      * # Arguments
      * * `mnemonic` - The user's mnemonic phrase used to derive the application key.
@@ -1139,6 +1243,17 @@ public protocol DownloadProtocol: AnyObject, Sendable {
      */
     func read() async throws  -> Data
     
+    /**
+     * Writes the whole download to the file at `path`, creating or truncating
+     * it, and returns the number of bytes written.
+     *
+     * Prefer this to [Download::read] when the destination is a local file:
+     * the data never crosses the FFI boundary. Use [Download::read] if you
+     * need the bytes themselves. Progress is still reported through the
+     * `shard_downloaded` callback on [DownloadOptions].
+     */
+    func writeToPath(path: String) async throws  -> UInt64
+    
 }
 /**
  * A download handle. Call [Download::read] repeatedly to receive chunks of
@@ -1240,6 +1355,32 @@ open func read()async throws  -> Data  {
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterData.lift,
+            errorHandler: FfiConverterTypeDownloadError_lift
+        )
+}
+    
+    /**
+     * Writes the whole download to the file at `path`, creating or truncating
+     * it, and returns the number of bytes written.
+     *
+     * Prefer this to [Download::read] when the destination is a local file:
+     * the data never crosses the FFI boundary. Use [Download::read] if you
+     * need the bytes themselves. Progress is still reported through the
+     * `shard_downloaded` callback on [DownloadOptions].
+     */
+open func writeToPath(path: String)async throws  -> UInt64  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_download_write_to_path(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(path)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
             errorHandler: FfiConverterTypeDownloadError_lift
         )
 }
@@ -1639,6 +1780,11 @@ public protocol PackedUploadProtocol: AnyObject, Sendable {
     func length()  -> UInt64
     
     /**
+     * Returns the optimal size of each slab in bytes.
+     */
+    func optimalDataSize()  -> UInt64
+    
+    /**
      * Returns the number of bytes remaining until reaching the optimal
      * packed size. Adding objects larger than this will start a new slab.
      * To minimize padding, prioritize objects that fit within the remaining
@@ -1809,6 +1955,17 @@ open func length() -> UInt64  {
 }
     
     /**
+     * Returns the optimal size of each slab in bytes.
+     */
+open func optimalDataSize() -> UInt64  {
+    return try!  FfiConverterUInt64.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_packedupload_optimal_data_size(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
      * Returns the number of bytes remaining until reaching the optimal
      * packed size. Adding objects larger than this will start a new slab.
      * To minimize padding, prioritize objects that fit within the remaining
@@ -1939,6 +2096,11 @@ public protocol PinnedObjectProtocol: AnyObject, Sendable {
      * Returns the slabs that make up the object.
      */
     func slabs()  -> [Slab]
+    
+    /**
+     * Returns a new object truncated to the requested length.
+     */
+    func truncate(length: UInt64)  -> PinnedObject
     
     /**
      * Updates the metadata associated with the object.
@@ -2127,6 +2289,18 @@ open func slabs() -> [Slab]  {
     return try!  FfiConverterSequenceTypeSlab.lift(try! rustCall() {
     uniffi_sia_storage_ffi_fn_method_pinnedobject_slabs(
             self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * Returns a new object truncated to the requested length.
+     */
+open func truncate(length: UInt64) -> PinnedObject  {
+    return try!  FfiConverterTypePinnedObject_lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_pinnedobject_truncate(
+            self.uniffiCloneHandle(),
+        FfiConverterUInt64.lower(length),$0
     )
 })
 }
@@ -2663,9 +2837,9 @@ public protocol SdkProtocol: AnyObject, Sendable {
     func download(object: PinnedObject, options: DownloadOptions) throws  -> Download
     
     /**
-     * Returns a list of all usable hosts.
+     * Returns a list of usable hosts, optionally filtered by a query.
      */
-    func hosts() async throws  -> [Host]
+    func hosts(query: HostQuery?) async throws  -> [Host]
     
     /**
      * Returns metadata about a specific object stored in the indexer.
@@ -2684,6 +2858,17 @@ public protocol SdkProtocol: AnyObject, Sendable {
     func objectEvents(cursor: ObjectsCursor?, limit: UInt32) async throws  -> [ObjectEvent]
     
     /**
+     * Retrieves a shared object from a signed URL.
+     */
+    func objectFromShareUrl(sharedUrl: String) async throws  -> PinnedObject
+    
+    /**
+     * Creates a signed URL that can be used to share object metadata
+     * with other people using an indexer.
+     */
+    func objectShareUrl(object: PinnedObject, validUntil: Date) throws  -> String
+    
+    /**
      * Pins an object to the indexer
      */
     func pinObject(object: PinnedObject) async throws 
@@ -2692,17 +2877,6 @@ public protocol SdkProtocol: AnyObject, Sendable {
      * Unpins slabs not used by any object on the account.
      */
     func pruneSlabs() async throws 
-    
-    /**
-     * Creates a signed URL that can be used to share object metadata
-     * with other people using an indexer.
-     */
-    func shareObject(object: PinnedObject, validUntil: Date) throws  -> String
-    
-    /**
-     * Retrieves a shared object from a signed URL.
-     */
-    func sharedObject(sharedUrl: String) async throws  -> PinnedObject
     
     /**
      * Returns metadata about a slab stored in the indexer.
@@ -2744,7 +2918,7 @@ public protocol SdkProtocol: AnyObject, Sendable {
      * # Returns
      * A [PackedUpload] that can be used to add objects and finalize the upload.
      */
-    func uploadPacked(options: PackedUploadOptions) async throws  -> PackedUpload
+    func uploadPacked(options: PackedUploadOptions) throws  -> PackedUpload
     
     /**
      * Uploads the file at `path`. Behaves like [upload](Self::upload)
@@ -2763,6 +2937,42 @@ public protocol SdkProtocol: AnyObject, Sendable {
      * uploaded slabs. The caller must pin the object to the indexer afterward.
      */
     func uploadPath(object: PinnedObject, path: String, options: UploadOptions) async throws  -> PinnedObject
+    
+    /**
+     * Creates a sharing key. Attach objects to it with `Sdk::share_object`.
+     */
+    func createSharingKey(description: String, expiresAt: Date?) async throws  -> SharingKey
+    
+    /**
+     * Revokes a sharing key, deleting it and detaching all of its objects.
+     */
+    func revokeSharingKey(key: SharingKey) async throws 
+    
+    /**
+     * Attaches an object to a sharing key, re-sealing its encryption keys under
+     * the key so recipients can decrypt it.
+     */
+    func shareObject(key: SharingKey, object: PinnedObject) async throws 
+    
+    /**
+     * Lists and decrypts the objects attached to a sharing key.
+     */
+    func sharedObjects(key: SharingKey, offset: UInt32, limit: UInt32) async throws  -> [PinnedObject]
+    
+    /**
+     * Fetches the indexer's record for a key, including its counts.
+     */
+    func sharingKey(key: SharingKey) async throws  -> KeyRecord
+    
+    /**
+     * Lists the account's sharing keys, most recently created first.
+     */
+    func sharingKeys(offset: UInt32, limit: UInt32) async throws  -> [KeyRecord]
+    
+    /**
+     * Detaches an object from a sharing key.
+     */
+    func unshareObject(key: SharingKey, id: String) async throws 
     
 }
 open class Sdk: SdkProtocol, @unchecked Sendable {
@@ -2888,15 +3098,15 @@ open func download(object: PinnedObject, options: DownloadOptions)throws  -> Dow
 }
     
     /**
-     * Returns a list of all usable hosts.
+     * Returns a list of usable hosts, optionally filtered by a query.
      */
-open func hosts()async throws  -> [Host]  {
+open func hosts(query: HostQuery? = nil)async throws  -> [Host]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_method_sdk_hosts(
-                    self.uniffiCloneHandle()
-                    
+                    self.uniffiCloneHandle(),
+                    FfiConverterOptionTypeHostQuery.lower(query)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
@@ -2954,6 +3164,40 @@ open func objectEvents(cursor: ObjectsCursor?, limit: UInt32)async throws  -> [O
 }
     
     /**
+     * Retrieves a shared object from a signed URL.
+     */
+open func objectFromShareUrl(sharedUrl: String)async throws  -> PinnedObject  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_object_from_share_url(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(sharedUrl)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypePinnedObject_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Creates a signed URL that can be used to share object metadata
+     * with other people using an indexer.
+     */
+open func objectShareUrl(object: PinnedObject, validUntil: Date)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeError_lift) {
+    uniffi_sia_storage_ffi_fn_method_sdk_object_share_url(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePinnedObject_lower(object),
+        FfiConverterTimestamp.lower(validUntil),$0
+    )
+})
+}
+    
+    /**
      * Pins an object to the indexer
      */
 open func pinObject(object: PinnedObject)async throws   {
@@ -2989,40 +3233,6 @@ open func pruneSlabs()async throws   {
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
-            errorHandler: FfiConverterTypeError_lift
-        )
-}
-    
-    /**
-     * Creates a signed URL that can be used to share object metadata
-     * with other people using an indexer.
-     */
-open func shareObject(object: PinnedObject, validUntil: Date)throws  -> String  {
-    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeError_lift) {
-    uniffi_sia_storage_ffi_fn_method_sdk_share_object(
-            self.uniffiCloneHandle(),
-        FfiConverterTypePinnedObject_lower(object),
-        FfiConverterTimestamp.lower(validUntil),$0
-    )
-})
-}
-    
-    /**
-     * Retrieves a shared object from a signed URL.
-     */
-open func sharedObject(sharedUrl: String)async throws  -> PinnedObject  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_sia_storage_ffi_fn_method_sdk_shared_object(
-                    self.uniffiCloneHandle(),
-                    FfiConverterString.lower(sharedUrl)
-                )
-            },
-            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
-            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
-            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
-            liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeError_lift
         )
 }
@@ -3112,21 +3322,13 @@ open func upload(object: PinnedObject, r: Reader, options: UploadOptions)async t
      * # Returns
      * A [PackedUpload] that can be used to add objects and finalize the upload.
      */
-open func uploadPacked(options: PackedUploadOptions)async throws  -> PackedUpload  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_sia_storage_ffi_fn_method_sdk_upload_packed(
-                    self.uniffiCloneHandle(),
-                    FfiConverterTypePackedUploadOptions_lower(options)
-                )
-            },
-            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
-            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
-            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
-            liftFunc: FfiConverterTypePackedUpload_lift,
-            errorHandler: FfiConverterTypeUploadError_lift
-        )
+open func uploadPacked(options: PackedUploadOptions)throws  -> PackedUpload  {
+    return try  FfiConverterTypePackedUpload_lift(try rustCallWithError(FfiConverterTypeUploadError_lift) {
+    uniffi_sia_storage_ffi_fn_method_sdk_upload_packed(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePackedUploadOptions_lower(options),$0
+    )
+})
 }
     
     /**
@@ -3159,6 +3361,147 @@ open func uploadPath(object: PinnedObject, path: String, options: UploadOptions)
             freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypePinnedObject_lift,
             errorHandler: FfiConverterTypeUploadError_lift
+        )
+}
+    
+    /**
+     * Creates a sharing key. Attach objects to it with `Sdk::share_object`.
+     */
+open func createSharingKey(description: String, expiresAt: Date?)async throws  -> SharingKey  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_create_sharing_key(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(description),FfiConverterOptionTimestamp.lower(expiresAt)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypeSharingKey_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Revokes a sharing key, deleting it and detaching all of its objects.
+     */
+open func revokeSharingKey(key: SharingKey)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_revoke_sharing_key(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypeSharingKey_lower(key)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Attaches an object to a sharing key, re-sealing its encryption keys under
+     * the key so recipients can decrypt it.
+     */
+open func shareObject(key: SharingKey, object: PinnedObject)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_share_object(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypeSharingKey_lower(key),FfiConverterTypePinnedObject_lower(object)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Lists and decrypts the objects attached to a sharing key.
+     */
+open func sharedObjects(key: SharingKey, offset: UInt32, limit: UInt32)async throws  -> [PinnedObject]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_shared_objects(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypeSharingKey_lower(key),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypePinnedObject.lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Fetches the indexer's record for a key, including its counts.
+     */
+open func sharingKey(key: SharingKey)async throws  -> KeyRecord  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_sharing_key(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypeSharingKey_lower(key)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeKeyRecord_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Lists the account's sharing keys, most recently created first.
+     */
+open func sharingKeys(offset: UInt32, limit: UInt32)async throws  -> [KeyRecord]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_sharing_keys(
+                    self.uniffiCloneHandle(),
+                    FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeKeyRecord.lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Detaches an object from a sharing key.
+     */
+open func unshareObject(key: SharingKey, id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_unshare_object(
+                    self.uniffiCloneHandle(),
+                    FfiConverterTypeSharingKey_lower(key),FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeError_lift
         )
 }
     
@@ -3205,6 +3548,426 @@ public func FfiConverterTypeSdk_lift(_ handle: UInt64) throws -> Sdk {
 #endif
 public func FfiConverterTypeSdk_lower(_ value: Sdk) -> UInt64 {
     return FfiConverterTypeSdk.lower(value)
+}
+
+
+
+
+
+
+/**
+ * A read-only SDK for the objects a sharing key grants access to.
+ *
+ * Unlike `Sdk`, it authenticates with a sharing key rather than an app key and
+ * cannot upload, pin, or delete. Downloads are paid for by the key's owner.
+ */
+public protocol SharedSdkProtocol: AnyObject, Sendable {
+    
+    /**
+     * Streams a shared object's data, paying hosts with the owner's tokens.
+     */
+    func download(object: PinnedObject, options: DownloadOptions) throws  -> Download
+    
+    /**
+     * Returns the hosts serving this key's objects, optionally filtered by a
+     * query. Mirrors `Sdk::hosts` but is scoped to the sharing key, so the set
+     * is already limited to hosts holding its objects.
+     */
+    func hosts(query: HostQuery?) async throws  -> [Host]
+    
+    /**
+     * Fetches and decrypts one object the key grants access to.
+     */
+    func object(id: String) async throws  -> PinnedObject
+    
+    /**
+     * Lists and decrypts a page of the objects the key grants access to.
+     */
+    func objects(offset: UInt32, limit: UInt32) async throws  -> [PinnedObject]
+    
+    /**
+     * Fetches the sharing key's stats from the indexer.
+     */
+    func stats() async throws  -> KeyStats
+    
+}
+/**
+ * A read-only SDK for the objects a sharing key grants access to.
+ *
+ * Unlike `Sdk`, it authenticates with a sharing key rather than an app key and
+ * cannot upload, pin, or delete. Downloads are paid for by the key's owner.
+ */
+open class SharedSdk: SharedSdkProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_sharedsdk(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_sharedsdk(handle, $0) }
+    }
+
+    
+    /**
+     * Connects to `indexer_url` as the recipient of the sharing key derived
+     * from `seed`, the 32-byte seed the key's owner handed out.
+     */
+public static func connect(indexerUrl: String, seed: Data)async throws  -> SharedSdk  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_constructor_sharedsdk_connect(FfiConverterString.lower(indexerUrl),FfiConverterData.lower(seed)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypeSharedSdk_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+
+    
+    /**
+     * Streams a shared object's data, paying hosts with the owner's tokens.
+     */
+open func download(object: PinnedObject, options: DownloadOptions)throws  -> Download  {
+    return try  FfiConverterTypeDownload_lift(try rustCallWithError(FfiConverterTypeDownloadError_lift) {
+    uniffi_sia_storage_ffi_fn_method_sharedsdk_download(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePinnedObject_lower(object),
+        FfiConverterTypeDownloadOptions_lower(options),$0
+    )
+})
+}
+    
+    /**
+     * Returns the hosts serving this key's objects, optionally filtered by a
+     * query. Mirrors `Sdk::hosts` but is scoped to the sharing key, so the set
+     * is already limited to hosts holding its objects.
+     */
+open func hosts(query: HostQuery? = nil)async throws  -> [Host]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sharedsdk_hosts(
+                    self.uniffiCloneHandle(),
+                    FfiConverterOptionTypeHostQuery.lower(query)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeHost.lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Fetches and decrypts one object the key grants access to.
+     */
+open func object(id: String)async throws  -> PinnedObject  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sharedsdk_object(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypePinnedObject_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Lists and decrypts a page of the objects the key grants access to.
+     */
+open func objects(offset: UInt32, limit: UInt32)async throws  -> [PinnedObject]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sharedsdk_objects(
+                    self.uniffiCloneHandle(),
+                    FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypePinnedObject.lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Fetches the sharing key's stats from the indexer.
+     */
+open func stats()async throws  -> KeyStats  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sharedsdk_stats(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeKeyStats_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSharedSdk: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SharedSdk
+
+    public static func lift(_ handle: UInt64) throws -> SharedSdk {
+        return SharedSdk(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SharedSdk) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SharedSdk {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SharedSdk, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedSdk_lift(_ handle: UInt64) throws -> SharedSdk {
+    return try FfiConverterTypeSharedSdk.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharedSdk_lower(_ value: SharedSdk) -> UInt64 {
+    return FfiConverterTypeSharedSdk.lower(value)
+}
+
+
+
+
+
+
+/**
+ * A sharing key, granting read-only access to the objects attached to it.
+ *
+ * It is just the credential; the operations that use it live on `Sdk`.
+ */
+public protocol SharingKeyProtocol: AnyObject, Sendable {
+    
+    /**
+     * The key's public half, which identifies it on the indexer.
+     */
+    func publicKey()  -> String
+    
+    /**
+     * The 32-byte seed a recipient needs to read the key's objects. Pair it
+     * with the indexer url in `SharedSdk::connect`.
+     */
+    func seed()  -> Data
+    
+}
+/**
+ * A sharing key, granting read-only access to the objects attached to it.
+ *
+ * It is just the credential; the operations that use it live on `Sdk`.
+ */
+open class SharingKey: SharingKeyProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_sharingkey(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_sharingkey(handle, $0) }
+    }
+
+    
+    /**
+     * Imports a sharing key from the 32-byte seed its owner handed out.
+     */
+public static func fromSeed(seed: Data)throws  -> SharingKey  {
+    return try  FfiConverterTypeSharingKey_lift(try rustCallWithError(FfiConverterTypeError_lift) {
+    uniffi_sia_storage_ffi_fn_constructor_sharingkey_from_seed(
+        FfiConverterData.lower(seed),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * The key's public half, which identifies it on the indexer.
+     */
+open func publicKey() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_sharingkey_public_key(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The 32-byte seed a recipient needs to read the key's objects. Pair it
+     * with the indexer url in `SharedSdk::connect`.
+     */
+open func seed() -> Data  {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_sharingkey_seed(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSharingKey: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SharingKey
+
+    public static func lift(_ handle: UInt64) throws -> SharingKey {
+        return SharingKey(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SharingKey) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SharingKey {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SharingKey, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharingKey_lift(_ handle: UInt64) throws -> SharingKey {
+    return try FfiConverterTypeSharingKey.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSharingKey_lower(_ value: SharingKey) -> UInt64 {
+    return FfiConverterTypeSharingKey.lower(value)
 }
 
 
@@ -3538,6 +4301,63 @@ public func FfiConverterTypeDownloadOptions_lower(_ value: DownloadOptions) -> R
 
 
 /**
+ * Geographic coordinates used to sort hosts by proximity.
+ */
+public struct GeoLocation: Equatable, Hashable {
+    public var latitude: Double
+    public var longitude: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension GeoLocation: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeGeoLocation: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GeoLocation {
+        return
+            try GeoLocation(
+                latitude: FfiConverterDouble.read(from: &buf), 
+                longitude: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GeoLocation, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.latitude, into: &buf)
+        FfiConverterDouble.write(value.longitude, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeoLocation_lift(_ buf: RustBuffer) throws -> GeoLocation {
+    return try FfiConverterTypeGeoLocation.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGeoLocation_lower(_ value: GeoLocation) -> RustBuffer {
+    return FfiConverterTypeGeoLocation.lower(value)
+}
+
+
+/**
  * Information about a storage provider on the
  * Sia network.
  */
@@ -3608,6 +4428,229 @@ public func FfiConverterTypeHost_lift(_ buf: RustBuffer) throws -> Host {
 #endif
 public func FfiConverterTypeHost_lower(_ value: Host) -> RustBuffer {
     return FfiConverterTypeHost.lower(value)
+}
+
+
+/**
+ * Query parameters for filtering hosts.
+ */
+public struct HostQuery: Equatable, Hashable {
+    public var location: GeoLocation?
+    public var `protocol`: AddressProtocol?
+    public var country: String?
+    public var limit: UInt64?
+    public var offset: UInt64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(location: GeoLocation? = nil, `protocol`: AddressProtocol? = nil, country: String? = nil, limit: UInt64? = nil, offset: UInt64? = nil) {
+        self.location = location
+        self.`protocol` = `protocol`
+        self.country = country
+        self.limit = limit
+        self.offset = offset
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension HostQuery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHostQuery: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HostQuery {
+        return
+            try HostQuery(
+                location: FfiConverterOptionTypeGeoLocation.read(from: &buf), 
+                protocol: FfiConverterOptionTypeAddressProtocol.read(from: &buf), 
+                country: FfiConverterOptionString.read(from: &buf), 
+                limit: FfiConverterOptionUInt64.read(from: &buf), 
+                offset: FfiConverterOptionUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: HostQuery, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeGeoLocation.write(value.location, into: &buf)
+        FfiConverterOptionTypeAddressProtocol.write(value.`protocol`, into: &buf)
+        FfiConverterOptionString.write(value.country, into: &buf)
+        FfiConverterOptionUInt64.write(value.limit, into: &buf)
+        FfiConverterOptionUInt64.write(value.offset, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostQuery_lift(_ buf: RustBuffer) throws -> HostQuery {
+    return try FfiConverterTypeHostQuery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHostQuery_lower(_ value: HostQuery) -> RustBuffer {
+    return FfiConverterTypeHostQuery.lower(value)
+}
+
+
+/**
+ * The indexer's record for a sharing key, including how many objects it grants
+ * access to and how much space they use.
+ */
+public struct KeyRecord {
+    /**
+     * The key this record describes.
+     */
+    public var key: SharingKey
+    public var description: String
+    /**
+     * A snapshot of how many objects the key grants access to and how much
+     * space they use.
+     */
+    public var stats: KeyStats
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The key this record describes.
+         */key: SharingKey, description: String, 
+        /**
+         * A snapshot of how many objects the key grants access to and how much
+         * space they use.
+         */stats: KeyStats) {
+        self.key = key
+        self.description = description
+        self.stats = stats
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension KeyRecord: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeKeyRecord: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> KeyRecord {
+        return
+            try KeyRecord(
+                key: FfiConverterTypeSharingKey.read(from: &buf), 
+                description: FfiConverterString.read(from: &buf), 
+                stats: FfiConverterTypeKeyStats.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: KeyRecord, into buf: inout [UInt8]) {
+        FfiConverterTypeSharingKey.write(value.key, into: &buf)
+        FfiConverterString.write(value.description, into: &buf)
+        FfiConverterTypeKeyStats.write(value.stats, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyRecord_lift(_ buf: RustBuffer) throws -> KeyRecord {
+    return try FfiConverterTypeKeyRecord.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyRecord_lower(_ value: KeyRecord) -> RustBuffer {
+    return FfiConverterTypeKeyRecord.lower(value)
+}
+
+
+/**
+ * A snapshot of what a sharing key grants access to. The counts reflect the
+ * moment the record was fetched, not a live view.
+ */
+public struct KeyStats: Equatable, Hashable {
+    public var objectCount: UInt64
+    public var objectSize: UInt64
+    public var pinnedData: UInt64
+    public var pinnedSize: UInt64
+    public var expiresAt: Date?
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(objectCount: UInt64, objectSize: UInt64, pinnedData: UInt64, pinnedSize: UInt64, expiresAt: Date?, createdAt: Date, updatedAt: Date) {
+        self.objectCount = objectCount
+        self.objectSize = objectSize
+        self.pinnedData = pinnedData
+        self.pinnedSize = pinnedSize
+        self.expiresAt = expiresAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension KeyStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeKeyStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> KeyStats {
+        return
+            try KeyStats(
+                objectCount: FfiConverterUInt64.read(from: &buf), 
+                objectSize: FfiConverterUInt64.read(from: &buf), 
+                pinnedData: FfiConverterUInt64.read(from: &buf), 
+                pinnedSize: FfiConverterUInt64.read(from: &buf), 
+                expiresAt: FfiConverterOptionTimestamp.read(from: &buf), 
+                createdAt: FfiConverterTimestamp.read(from: &buf), 
+                updatedAt: FfiConverterTimestamp.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: KeyStats, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.objectCount, into: &buf)
+        FfiConverterUInt64.write(value.objectSize, into: &buf)
+        FfiConverterUInt64.write(value.pinnedData, into: &buf)
+        FfiConverterUInt64.write(value.pinnedSize, into: &buf)
+        FfiConverterOptionTimestamp.write(value.expiresAt, into: &buf)
+        FfiConverterTimestamp.write(value.createdAt, into: &buf)
+        FfiConverterTimestamp.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyStats_lift(_ buf: RustBuffer) throws -> KeyStats {
+    return try FfiConverterTypeKeyStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyStats_lower(_ value: KeyStats) -> RustBuffer {
+    return FfiConverterTypeKeyStats.lower(value)
 }
 
 
@@ -5297,6 +6340,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTimestamp: FfiConverterRustBuffer {
+    typealias SwiftType = Date?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTimestamp.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTimestamp.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePinnedObject: FfiConverterRustBuffer {
     typealias SwiftType = PinnedObject?
 
@@ -5369,6 +6436,54 @@ fileprivate struct FfiConverterOptionTypeSdk: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeGeoLocation: FfiConverterRustBuffer {
+    typealias SwiftType = GeoLocation?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeGeoLocation.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeGeoLocation.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeHostQuery: FfiConverterRustBuffer {
+    typealias SwiftType = HostQuery?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeHostQuery.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeHostQuery.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeObjectsCursor: FfiConverterRustBuffer {
     typealias SwiftType = ObjectsCursor?
 
@@ -5385,6 +6500,30 @@ fileprivate struct FfiConverterOptionTypeObjectsCursor: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeObjectsCursor.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAddressProtocol: FfiConverterRustBuffer {
+    typealias SwiftType = AddressProtocol?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAddressProtocol.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAddressProtocol.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -5435,6 +6574,31 @@ fileprivate struct FfiConverterSequenceTypeHost: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeHost.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeKeyRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [KeyRecord]
+
+    public static func write(_ value: [KeyRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeKeyRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [KeyRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [KeyRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeKeyRecord.read(from: &buf))
         }
         return seq
     }
@@ -5751,6 +6915,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_download_read() != 37314) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_download_write_to_path() != 21850) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_packedupload_add() != 50710) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5764,6 +6931,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_packedupload_length() != 7379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_packedupload_optimal_data_size() != 7326) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_packedupload_remaining() != 11061) {
@@ -5793,6 +6963,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_slabs() != 33285) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_truncate() != 1144) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_pinnedobject_update_metadata() != 21836) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5814,7 +6987,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_download() != 48699) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_hosts() != 44133) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_hosts() != 1190) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_object() != 28006) {
@@ -5823,16 +6996,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_object_events() != 51406) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_object_from_share_url() != 5457) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_object_share_url() != 10233) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_pin_object() != 29905) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_prune_slabs() != 20696) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_share_object() != 27092) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_shared_object() != 842) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_slab() != 11224) {
@@ -5844,10 +7017,31 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_upload() != 27415) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 6247) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_packed() != 21259) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_upload_path() != 16130) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_create_sharing_key() != 36245) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_revoke_sharing_key() != 63705) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_share_object() != 64313) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_shared_objects() != 20232) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_sharing_key() != 23426) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_sharing_keys() != 48221) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_unshare_object() != 34851) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_appkey_export() != 16630) {
@@ -5862,10 +7056,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_appkey_verify_signature() != 38967) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_builder_connect_pre_authorized() != 20053) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_builder_connected() != 44195) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_builder_register() != 39536) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_matches_existing_app_key() != 50394) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_builder_reconnecting() != 8697) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_builder_register() != 57288) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_builder_request_connection() != 35070) {
@@ -5892,6 +7095,27 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_logger_debug() != 60732) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_download() != 60018) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_hosts() != 40457) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_object() != 23554) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_objects() != 8634) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_stats() != 43938) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharingkey_public_key() != 14673) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharingkey_seed() != 4052) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_constructor_pinnedobject_new() != 8222) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5902,6 +7126,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_builder_new() != 24760) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect() != 19048) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_sharingkey_from_seed() != 58765) {
         return InitializationResult.apiChecksumMismatch
     }
 

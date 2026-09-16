@@ -1,6 +1,6 @@
 [package]
 name = "sia_storage_sdk"
-version = "0.10.0"
+version = "0.12.0"
 edition = "2024"
 repository = "https://github.com/SiaFoundation/sia-storage-sdk"
 license = "MIT"
@@ -12,7 +12,7 @@ name = "sia_storage_ffi"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-sia_storage_ffi = { git = "https://github.com/SiaFoundation/sia-sdk-rs.git", rev = "3947162955f6d665caa6a803bbe1f1484d7a0ca3" }
+sia_storage_ffi = { git = "https://github.com/SiaFoundation/sia-sdk-rs.git", rev = "5e532cb202873646728dcdbfc7be43d1436520c9" }
 uniffi = { version = "=0.31.1", features = ["cli", "tokio"] }
 
 [[bin]]

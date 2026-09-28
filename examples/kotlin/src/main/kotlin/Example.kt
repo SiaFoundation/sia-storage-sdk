@@ -2,6 +2,7 @@ import kotlinx.coroutines.runBlocking
 import sia.indexd.*
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.Base64
 
 class PrintLogger : Logger {
@@ -100,4 +101,12 @@ fun main() = runBlocking {
     val total = d2.writeTo(buffer)
     elapsed = (System.currentTimeMillis() - start) / 1000.0
     println("Downloaded object ${lastObj.id()} with $total bytes in %.2fs".format(elapsed))
+
+    // Write a download directly to a file
+    start = System.currentTimeMillis()
+    val file = File(System.getProperty("java.io.tmpdir"), "${lastObj.id()}.bin")
+    val d3 = sdk.download(lastObj, DownloadOptions())
+    val written = d3.writeToPath(file.path)
+    elapsed = (System.currentTimeMillis() - start) / 1000.0
+    println("Wrote object ${lastObj.id()} with $written bytes to ${file.path} in %.2fs".format(elapsed))
 }

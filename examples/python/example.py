@@ -100,7 +100,7 @@ async def main():
     print("\nUpload Packing Example...")
 
     start = datetime.now(timezone.utc)
-    upload = await sdk.upload_packed(PackedUploadOptions())
+    upload = sdk.upload_packed(PackedUploadOptions())
 
     for i in range(10):
         data = f"hello, world {i}!"

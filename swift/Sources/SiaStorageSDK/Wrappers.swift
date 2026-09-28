@@ -169,11 +169,11 @@ extension Sdk {
      *
      * Example:
      * ```swift
-     * let upload = try await sdk.uploadPacked()
+     * let upload = try sdk.uploadPacked()
      * ```
      */
-    public func uploadPacked() async throws -> PackedUpload {
-        return try await uploadPacked(options: PackedUploadOptions())
+    public func uploadPacked() throws -> PackedUpload {
+        return try uploadPacked(options: PackedUploadOptions())
     }
 }
 

@@ -25,6 +25,7 @@ from .sia_storage.sia_storage_ffi import (
     Reader,
     Sdk as _Sdk,
     ShardProgress,
+    SharedSdk as _SharedSdk,
     UploadOptions,
     uniffi_set_event_loop,
 )
@@ -116,6 +117,16 @@ class Builder(_Builder):
         """
         return Sdk._from_ffi(await super().register(mnemonic))
 
+    async def connect_pre_authorized(self, pre_authorized_key: bytes, mnemonic: str) -> Sdk:
+        """Connects using a pre-authorized key, bypassing the interactive
+        approval flow, and returns an Sdk instance directly.
+
+        Args:
+            pre_authorized_key: The 32-byte pre-authorized private key seed.
+            mnemonic: The user's mnemonic phrase used to derive the application key.
+        """
+        return Sdk._from_ffi(await super().connect_pre_authorized(pre_authorized_key, mnemonic))
+
 
 class Sdk(_Sdk):
     """The main SDK for interacting with the Sia decentralized storage network.
@@ -188,7 +199,7 @@ class Sdk(_Sdk):
         """
         return await super().upload_path(obj, str(path), _prepare_upload_options(options))
 
-    async def upload_packed(self, options: Optional[PackedUploadOptions] = None) -> PackedUpload:
+    def upload_packed(self, options: Optional[PackedUploadOptions] = None) -> PackedUpload:
         """Creates a new packed upload.
 
         This allows multiple objects to be packed together for more efficient
@@ -203,7 +214,7 @@ class Sdk(_Sdk):
             A PackedUpload that can be used to add objects and finalize the upload.
         """
         return PackedUpload._from_ffi(
-            await super().upload_packed(_prepare_packed_upload_options(options))
+            super().upload_packed(_prepare_packed_upload_options(options))
         )
 
     def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
@@ -215,6 +226,43 @@ class Sdk(_Sdk):
 
         Args:
             obj: The pinned object to download.
+            options: The download options. `shard_downloaded` accepts either a
+                ProgressCallback or any callable taking a ShardProgress.
+
+        Returns:
+            A Download handle.
+        """
+        return Download(super().download(obj, _prepare_download_options(options)))
+
+
+class SharedSdk(_SharedSdk):
+    """A read-only SDK for the objects a sharing key grants access to.
+
+    Unlike Sdk, it authenticates with a sharing key rather than an app key and
+    cannot upload, pin, or delete. Downloads are paid for by the key's owner.
+    """
+
+    def __init__(self, *args, **kwargs):
+        raise ValueError("Use SharedSdk.connect() to create a SharedSdk instance")
+
+    @classmethod
+    async def connect(cls, indexer_url: str, seed: bytes) -> SharedSdk:
+        """Connects to `indexer_url` as the recipient of the sharing key derived
+        from `seed`, the 32-byte seed the key's owner handed out.
+
+        Args:
+            indexer_url: The URL of the indexer.
+            seed: The 32-byte sharing key seed.
+        """
+        uniffi_set_event_loop(asyncio.get_running_loop())
+        inner = await _SharedSdk.connect(indexer_url, seed)
+        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
+
+    def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
+        """Starts a download of a shared object's data.
+
+        Args:
+            obj: The shared object to download.
             options: The download options. `shard_downloaded` accepts either a
                 ProgressCallback or any callable taking a ShardProgress.
 

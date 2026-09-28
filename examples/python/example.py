@@ -1,4 +1,6 @@
 import asyncio
+import os
+import tempfile
 from base64 import b64encode
 from sys import stdin
 from datetime import datetime, timezone
@@ -124,6 +126,14 @@ async def main():
         total = await d.write_to(buffer)
     elapsed = (datetime.now(timezone.utc) - start).total_seconds()
     print(f"Downloaded object {objects[-1].id()} with {total} bytes in {elapsed:.2f}s")
+
+    # Write a download directly to a file
+    start = datetime.now(timezone.utc)
+    path = os.path.join(tempfile.gettempdir(), f"{objects[-1].id()}.bin")
+    async with sdk.download(objects[-1]) as d:
+        total = await d.write_to_path(path)
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    print(f"Wrote object {objects[-1].id()} with {total} bytes to {path} in {elapsed:.2f}s")
 
 
 asyncio.run(main())

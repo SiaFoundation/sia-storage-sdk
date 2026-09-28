@@ -284,7 +284,11 @@ class Download:
         async with sdk.download(obj) as d:
             data = await d.read_all()
 
-        # Stream chunks to a file
+        # Write directly to a file
+        async with sdk.download(obj) as d:
+            await d.write_to_path("out.bin")
+
+        # Stream chunks to a writer
         async with sdk.download(obj) as d:
             with open("out.bin", "wb") as f:
                 await d.write_to(f)
@@ -344,6 +348,22 @@ class Download:
             w.write(chunk)
             total += len(chunk)
         return total
+
+    async def write_to_path(self, path: str) -> int:
+        """Writes the whole download to the file at `path`, creating or
+        truncating it.
+
+        Prefer this to `write_to` when the destination is a local file: the
+        data stays on the Rust runtime instead of crossing the FFI boundary
+        once per chunk.
+
+        Args:
+            path: The path of the file to write.
+
+        Returns:
+            The total number of bytes written.
+        """
+        return await self._inner.write_to_path(str(path))
 
     async def close(self) -> None:
         """Cancels the download and releases any in-flight recovery tasks."""

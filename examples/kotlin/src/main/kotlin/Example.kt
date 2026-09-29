@@ -106,7 +106,7 @@ fun main() = runBlocking {
     start = System.currentTimeMillis()
     val file = File(System.getProperty("java.io.tmpdir"), "${lastObj.id()}.bin")
     val d3 = sdk.download(lastObj, DownloadOptions())
-    val written = d3.writeToPath(file.path)
+    val written = d3.writeTo(file)
     elapsed = (System.currentTimeMillis() - start) / 1000.0
     println("Wrote object ${lastObj.id()} with $written bytes to ${file.path} in %.2fs".format(elapsed))
 }

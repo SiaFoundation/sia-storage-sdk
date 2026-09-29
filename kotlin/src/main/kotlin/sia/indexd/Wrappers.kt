@@ -166,6 +166,21 @@ suspend fun Download.writeTo(w: OutputStream): Long {
 }
 
 /**
+ * Writes the whole download to [file], creating or truncating it, and returns
+ * the total bytes written.
+ *
+ * Prefer this to the [OutputStream] overload for files on disk: the data stays
+ * on the Rust runtime instead of crossing the FFI boundary once per chunk.
+ *
+ * Example:
+ * ```kotlin
+ * val d = sdk.download(obj, DownloadOptions())
+ * try { d.writeTo(File("out.bin")) } finally { d.close() }
+ * ```
+ */
+suspend fun Download.writeTo(file: File): ULong = writeToPath(file.path)
+
+/**
  * Add data from an [InputStream] to a packed upload.
  *
  * Example:

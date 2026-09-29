@@ -260,6 +260,24 @@ extension Download {
         }
         return total
     }
+
+    /**
+     * Writes the whole download to the file at `url`, creating or truncating
+     * it, and returns the total bytes written.
+     *
+     * Prefer this to the `OutputStream` overload for files on disk: the data
+     * stays on the Rust runtime instead of crossing the FFI boundary once per
+     * chunk.
+     *
+     * Example:
+     * ```swift
+     * let d = try sdk.download(object: obj, options: DownloadOptions())
+     * let total = try await d.write(to: URL(fileURLWithPath: "out.bin"))
+     * ```
+     */
+    public func write(to url: URL) async throws -> UInt64 {
+        return try await writeToPath(path: url.path)
+    }
 }
 
 /**

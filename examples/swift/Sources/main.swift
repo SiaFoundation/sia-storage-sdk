@@ -131,7 +131,7 @@ struct SiaStorageSDKExample {
             start = Date()
             let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(lastObject.id()).bin")
             let d3 = try sdk.download(object: lastObject, options: DownloadOptions())
-            let written = try await d3.writeToPath(path: file.path)
+            let written = try await d3.write(to: file)
             elapsed = Date().timeIntervalSince(start)
             print("Wrote object \(lastObject.id()) with \(written) bytes to \(file.path) in \(String(format: "%.2f", elapsed))s")
 

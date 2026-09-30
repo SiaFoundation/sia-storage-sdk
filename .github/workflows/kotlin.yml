@@ -238,7 +238,18 @@ jobs:
         working-directory: kotlin
         run: gradle publish -x test -x jar -x sourcesJar -x javadocJar
         env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+
+      - name: Upload to Central Portal
+        working-directory: kotlin/build/staging-deploy
+        run: |
+          zip -r ../bundle.zip .
+          TOKEN=$(printf '%s:%s' "$MAVEN_CENTRAL_USERNAME" "$MAVEN_CENTRAL_PASSWORD" | base64 -w0)
+          curl --fail-with-body -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -F "bundle=@../bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=siastoragesdk-${{ github.sha }}&publishingType=AUTOMATIC"
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

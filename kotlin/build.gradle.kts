@@ -40,7 +40,7 @@ publishing {
             pom {
                 name.set("siastoragesdk")
                 description.set("Kotlin SDK for interacting with the Sia decentralized storage network")
-                url.set("https://github.com/SiaFoundation/indexd-sdk")
+                url.set("https://github.com/SiaFoundation/sia-storage-sdk")
 
                 licenses {
                     license {
@@ -58,22 +58,19 @@ publishing {
                 }
 
                 scm {
-                    connection.set("scm:git:git://github.com/SiaFoundation/indexd-sdk.git")
-                    developerConnection.set("scm:git:ssh://github.com/SiaFoundation/indexd-sdk.git")
-                    url.set("https://github.com/SiaFoundation/indexd-sdk")
+                    connection.set("scm:git:git://github.com/SiaFoundation/sia-storage-sdk.git")
+                    developerConnection.set("scm:git:ssh://github.com/SiaFoundation/sia-storage-sdk.git")
+                    url.set("https://github.com/SiaFoundation/sia-storage-sdk")
                 }
             }
         }
     }
 
     repositories {
+        // Bundled and uploaded to the Central Portal by CI
         maven {
-            name = "OSSRH"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = findProperty("ossrhUsername") as String? ?: System.getenv("OSSRH_USERNAME")
-                password = findProperty("ossrhPassword") as String? ?: System.getenv("OSSRH_PASSWORD")
-            }
+            name = "staging"
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
         }
     }
 }

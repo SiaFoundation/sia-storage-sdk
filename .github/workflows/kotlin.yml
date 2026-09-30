@@ -238,7 +238,45 @@ jobs:
         working-directory: kotlin
         run: gradle publish -x test -x jar -x sourcesJar -x javadocJar
         env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+
+      # The upload is asynchronous; poll until Central finishes validating and
+      # publishing so the job fails if the release never lands.
+      - name: Upload to Central Portal
+        working-directory: kotlin/build/staging-deploy
+        timeout-minutes: 65
+        run: |
+          zip -r ../bundle.zip .
+          TOKEN=$(printf '%s:%s' "$MAVEN_CENTRAL_USERNAME" "$MAVEN_CENTRAL_PASSWORD" | base64 -w0)
+          DEPLOYMENT_ID=$(curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -F "bundle=@../bundle.zip" \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=siastoragesdk-${{ github.sha }}&publishingType=AUTOMATIC") \
+            || { echo "Upload failed: $DEPLOYMENT_ID"; exit 1; }
+          echo "Deployment ID: $DEPLOYMENT_ID"
+
+          DEADLINE=$((SECONDS + 3600))
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            STATUS=$(curl --fail-with-body -sS --retry 5 --retry-all-errors -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID") \
+              || { echo "Status check failed: $STATUS"; exit 1; }
+            STATE=$(jq -r '.deploymentState' <<< "$STATUS")
+            echo "Deployment state: $STATE"
+            case "$STATE" in
+              PUBLISHED)
+                exit 0
+                ;;
+              FAILED)
+                jq '.errors' <<< "$STATUS"
+                exit 1
+                ;;
+            esac
+            sleep 15
+          done
+          echo "Timed out waiting for deployment $DEPLOYMENT_ID to publish"
+          exit 1
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

@@ -175,6 +175,22 @@ extension Sdk {
     public func uploadPacked() throws -> PackedUpload {
         return try uploadPacked(options: PackedUploadOptions())
     }
+
+    /**
+     * Unpin slabs not used by any object on the account, leaving the cutoff
+     * to the indexer.
+     *
+     * Call `pruneSlabs(before:)` instead to prune only slabs pinned before a
+     * given time.
+     *
+     * Example:
+     * ```swift
+     * try await sdk.pruneSlabs()
+     * ```
+     */
+    public func pruneSlabs() async throws {
+        try await pruneSlabs(before: nil)
+    }
 }
 
 /**

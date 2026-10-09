@@ -920,6 +920,16 @@ public protocol BuilderProtocol: AnyObject, Sendable {
      */
     func waitForApproval() async throws  -> Builder
     
+    /**
+     * Sets whether the SDK requests CBOR responses from the indexer (enabled
+     * by default). Responses are always decoded according to their content
+     * type; request bodies remain JSON. Only available before connecting.
+     *
+     * # Arguments
+     * * `enable` - Whether to request CBOR. Set to `false` to request JSON for easier inspection.
+     */
+    func withCbor(enable: Bool) throws  -> Builder
+    
 }
 open class Builder: BuilderProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -1169,6 +1179,23 @@ open func waitForApproval()async throws  -> Builder  {
             liftFunc: FfiConverterTypeBuilder_lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
+}
+    
+    /**
+     * Sets whether the SDK requests CBOR responses from the indexer (enabled
+     * by default). Responses are always decoded according to their content
+     * type; request bodies remain JSON. Only available before connecting.
+     *
+     * # Arguments
+     * * `enable` - Whether to request CBOR. Set to `false` to request JSON for easier inspection.
+     */
+open func withCbor(enable: Bool)throws  -> Builder  {
+    return try  FfiConverterTypeBuilder_lift(try rustCallWithError(FfiConverterTypeBuilderError_lift) {
+    uniffi_sia_storage_ffi_fn_method_builder_with_cbor(
+            self.uniffiCloneHandle(),
+        FfiConverterBool.lower(enable),$0
+    )
+})
 }
     
 
@@ -2875,13 +2902,11 @@ public protocol SdkProtocol: AnyObject, Sendable {
     
     /**
      * Unpins slabs not used by any object on the account.
+     *
+     * `before` prunes only slabs pinned before that time. Omitting it leaves
+     * the cutoff to the indexer.
      */
-    func pruneSlabs() async throws 
-    
-    /**
-     * Returns metadata about a slab stored in the indexer.
-     */
-    func slab(slabId: String) async throws  -> PinnedSlab
+    func pruneSlabs(before: Date?) async throws 
     
     /**
      * Updates the metadata of an object stored in the indexer. The object must already be pinned to
@@ -3219,40 +3244,23 @@ open func pinObject(object: PinnedObject)async throws   {
     
     /**
      * Unpins slabs not used by any object on the account.
+     *
+     * `before` prunes only slabs pinned before that time. Omitting it leaves
+     * the cutoff to the indexer.
      */
-open func pruneSlabs()async throws   {
+open func pruneSlabs(before: Date?)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_method_sdk_prune_slabs(
-                    self.uniffiCloneHandle()
-                    
+                    self.uniffiCloneHandle(),
+                    FfiConverterOptionTimestamp.lower(before)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_void,
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_void,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_void,
             liftFunc: { $0 },
-            errorHandler: FfiConverterTypeError_lift
-        )
-}
-    
-    /**
-     * Returns metadata about a slab stored in the indexer.
-     */
-open func slab(slabId: String)async throws  -> PinnedSlab  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_sia_storage_ffi_fn_method_sdk_slab(
-                    self.uniffiCloneHandle(),
-                    FfiConverterString.lower(slabId)
-                )
-            },
-            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypePinnedSlab_lift,
             errorHandler: FfiConverterTypeError_lift
         )
 }
@@ -3581,6 +3589,12 @@ public protocol SharedSdkProtocol: AnyObject, Sendable {
     func object(id: String) async throws  -> PinnedObject
     
     /**
+     * Lists a page of the objects the key grants access to without their
+     * slabs, which is much smaller and faster than `objects`.
+     */
+    func objectSummaries(offset: UInt32, limit: UInt32) async throws  -> [ObjectSummary]
+    
+    /**
      * Lists and decrypts a page of the objects the key grants access to.
      */
     func objects(offset: UInt32, limit: UInt32) async throws  -> [PinnedObject]
@@ -3667,6 +3681,26 @@ public static func connect(indexerUrl: String, seed: Data)async throws  -> Share
         )
 }
     
+    /**
+     * Like [SharedSdk::connect], but sets whether the SDK requests CBOR
+     * responses from the indexer. Set `cbor` to `false` to request JSON for
+     * easier inspection.
+     */
+public static func connectWithCbor(indexerUrl: String, seed: Data, cbor: Bool)async throws  -> SharedSdk  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_constructor_sharedsdk_connect_with_cbor(FfiConverterString.lower(indexerUrl),FfiConverterData.lower(seed),FfiConverterBool.lower(cbor)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
+            liftFunc: FfiConverterTypeSharedSdk_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
 
     
     /**
@@ -3720,6 +3754,27 @@ open func object(id: String)async throws  -> PinnedObject  {
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypePinnedObject_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Lists a page of the objects the key grants access to without their
+     * slabs, which is much smaller and faster than `objects`.
+     */
+open func objectSummaries(offset: UInt32, limit: UInt32)async throws  -> [ObjectSummary]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sharedsdk_object_summaries(
+                    self.uniffiCloneHandle(),
+                    FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeObjectSummary.lift,
             errorHandler: FfiConverterTypeError_lift
         )
 }
@@ -4777,6 +4832,83 @@ public func FfiConverterTypeObjectEvent_lower(_ value: ObjectEvent) -> RustBuffe
 
 
 /**
+ * An object listed without its slabs, as `SharedSdk::object_summaries`
+ * returns it. It cannot be downloaded. Fetch the full object with
+ * `SharedSdk::object` to download it.
+ */
+public struct ObjectSummary: Equatable, Hashable {
+    public var id: String
+    /**
+     * The object's size in bytes.
+     */
+    public var size: UInt64
+    public var metadata: Data
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, 
+        /**
+         * The object's size in bytes.
+         */size: UInt64, metadata: Data, createdAt: Date, updatedAt: Date) {
+        self.id = id
+        self.size = size
+        self.metadata = metadata
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ObjectSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeObjectSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ObjectSummary {
+        return
+            try ObjectSummary(
+                id: FfiConverterString.read(from: &buf), 
+                size: FfiConverterUInt64.read(from: &buf), 
+                metadata: FfiConverterData.read(from: &buf), 
+                createdAt: FfiConverterTimestamp.read(from: &buf), 
+                updatedAt: FfiConverterTimestamp.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ObjectSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterUInt64.write(value.size, into: &buf)
+        FfiConverterData.write(value.metadata, into: &buf)
+        FfiConverterTimestamp.write(value.createdAt, into: &buf)
+        FfiConverterTimestamp.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeObjectSummary_lift(_ buf: RustBuffer) throws -> ObjectSummary {
+    return try FfiConverterTypeObjectSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeObjectSummary_lower(_ value: ObjectSummary) -> RustBuffer {
+    return FfiConverterTypeObjectSummary.lower(value)
+}
+
+
+/**
  * Used to paginate through objects stored in the indexer.
  *
  * When syncing changes from an indexer, `after` should be set to the
@@ -4962,75 +5094,6 @@ public func FfiConverterTypePinnedSector_lift(_ buf: RustBuffer) throws -> Pinne
 #endif
 public func FfiConverterTypePinnedSector_lower(_ value: PinnedSector) -> RustBuffer {
     return FfiConverterTypePinnedSector.lower(value)
-}
-
-
-/**
- * A PinnedSlab represents a slab that has been pinned to the indexer.
- */
-public struct PinnedSlab: Equatable, Hashable {
-    public var version: UInt8
-    public var id: String
-    public var encryptionKey: Data
-    public var minShards: UInt8
-    public var sectors: [PinnedSector]
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(version: UInt8, id: String, encryptionKey: Data, minShards: UInt8, sectors: [PinnedSector]) {
-        self.version = version
-        self.id = id
-        self.encryptionKey = encryptionKey
-        self.minShards = minShards
-        self.sectors = sectors
-    }
-
-    
-
-    
-}
-
-#if compiler(>=6)
-extension PinnedSlab: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypePinnedSlab: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PinnedSlab {
-        return
-            try PinnedSlab(
-                version: FfiConverterUInt8.read(from: &buf), 
-                id: FfiConverterString.read(from: &buf), 
-                encryptionKey: FfiConverterData.read(from: &buf), 
-                minShards: FfiConverterUInt8.read(from: &buf), 
-                sectors: FfiConverterSequenceTypePinnedSector.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: PinnedSlab, into buf: inout [UInt8]) {
-        FfiConverterUInt8.write(value.version, into: &buf)
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterData.write(value.encryptionKey, into: &buf)
-        FfiConverterUInt8.write(value.minShards, into: &buf)
-        FfiConverterSequenceTypePinnedSector.write(value.sectors, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePinnedSlab_lift(_ buf: RustBuffer) throws -> PinnedSlab {
-    return try FfiConverterTypePinnedSlab.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypePinnedSlab_lower(_ value: PinnedSlab) -> RustBuffer {
-    return FfiConverterTypePinnedSlab.lower(value)
 }
 
 
@@ -6657,6 +6720,31 @@ fileprivate struct FfiConverterSequenceTypeObjectEvent: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeObjectSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [ObjectSummary]
+
+    public static func write(_ value: [ObjectSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeObjectSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ObjectSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ObjectSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeObjectSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypePinnedSector: FfiConverterRustBuffer {
     typealias SwiftType = [PinnedSector]
 
@@ -6844,8 +6932,8 @@ public func uniffiForeignFutureHandleCountSiaStorageFfi() -> Int {
 /**
  * Calculates the encoded size of data given the original size and erasure coding parameters.
  */
-public func encodedSize(size: UInt64, dataShards: UInt8, parityShards: UInt8) -> UInt64  {
-    return try!  FfiConverterUInt64.lift(try! rustCall() {
+public func encodedSize(size: UInt64, dataShards: UInt8, parityShards: UInt8)throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeError_lift) {
     uniffi_sia_storage_ffi_fn_func_encoded_size(
         FfiConverterUInt64.lower(size),
         FfiConverterUInt8.lower(dataShards),
@@ -6897,7 +6985,7 @@ private let initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_func_encoded_size() != 52940) {
+    if (uniffi_sia_storage_ffi_checksum_func_encoded_size() != 16698) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_func_generate_recovery_phrase() != 50091) {
@@ -7005,10 +7093,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_sdk_pin_object() != 29905) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_prune_slabs() != 20696) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_sia_storage_ffi_checksum_method_sdk_slab() != 11224) {
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_prune_slabs() != 11964) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_update_object_metadata() != 27986) {
@@ -7080,6 +7165,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_builder_wait_for_approval() != 26618) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_builder_with_cbor() != 60774) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_reader_read() != 59516) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7102,6 +7190,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_object() != 23554) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_object_summaries() != 29516) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_objects() != 8634) {
@@ -7129,6 +7220,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect() != 19048) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect_with_cbor() != 14887) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_sharingkey_from_seed() != 58765) {

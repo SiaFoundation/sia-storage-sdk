@@ -268,21 +268,6 @@ class SharedSdk(_SharedSdk):
         inner = await _SharedSdk.connect(indexer_url, seed)
         return cls._uniffi_make_instance(inner._uniffi_clone_handle())
 
-    @classmethod
-    async def connect_with_cbor(cls, indexer_url: str, seed: bytes, cbor: bool) -> SharedSdk:
-        """Like connect(), but sets whether the SDK requests CBOR responses
-        from the indexer.
-
-        Args:
-            indexer_url: The URL of the indexer.
-            seed: The 32-byte sharing key seed.
-            cbor: Whether to request CBOR. Pass False to request JSON for
-                easier inspection.
-        """
-        uniffi_set_event_loop(asyncio.get_running_loop())
-        inner = await _SharedSdk.connect_with_cbor(indexer_url, seed, cbor)
-        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
-
     def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:
         """Starts a download of a shared object's data.
 

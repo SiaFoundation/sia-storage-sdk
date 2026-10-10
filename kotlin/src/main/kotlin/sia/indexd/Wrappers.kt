@@ -108,6 +108,20 @@ suspend fun Sdk.upload(
 ): PinnedObject = uploadPath(obj, file.path, options)
 
 /**
+ * Unpin slabs not used by any object on the account, leaving the cutoff to the
+ * indexer.
+ *
+ * Call `pruneSlabs(before)` with an [java.time.Instant] instead to prune only
+ * slabs pinned before a given time.
+ *
+ * Example:
+ * ```kotlin
+ * sdk.pruneSlabs()
+ * ```
+ */
+suspend fun Sdk.pruneSlabs(): Unit = pruneSlabs(null)
+
+/**
  * Reads the entire remaining stream into memory and returns it.
  *
  * Example:

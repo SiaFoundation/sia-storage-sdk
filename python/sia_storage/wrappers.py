@@ -9,6 +9,7 @@ plain-callable progress callbacks.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from io import BytesIO
 from typing import Any, BinaryIO, Callable, Optional, Union
 
@@ -234,6 +235,15 @@ class Sdk(_Sdk):
         """
         return Download(super().download(obj, _prepare_download_options(options)))
 
+    async def prune_slabs(self, before: Optional[datetime] = None) -> None:
+        """Unpins slabs not used by any object on the account.
+
+        Args:
+            before: Prune only slabs pinned before this time. Omit it to leave
+                the cutoff to the indexer.
+        """
+        await super().prune_slabs(before)
+
 
 class SharedSdk(_SharedSdk):
     """A read-only SDK for the objects a sharing key grants access to.
@@ -256,6 +266,21 @@ class SharedSdk(_SharedSdk):
         """
         uniffi_set_event_loop(asyncio.get_running_loop())
         inner = await _SharedSdk.connect(indexer_url, seed)
+        return cls._uniffi_make_instance(inner._uniffi_clone_handle())
+
+    @classmethod
+    async def connect_with_cbor(cls, indexer_url: str, seed: bytes, cbor: bool) -> SharedSdk:
+        """Like connect(), but sets whether the SDK requests CBOR responses
+        from the indexer.
+
+        Args:
+            indexer_url: The URL of the indexer.
+            seed: The 32-byte sharing key seed.
+            cbor: Whether to request CBOR. Pass False to request JSON for
+                easier inspection.
+        """
+        uniffi_set_event_loop(asyncio.get_running_loop())
+        inner = await _SharedSdk.connect_with_cbor(indexer_url, seed, cbor)
         return cls._uniffi_make_instance(inner._uniffi_clone_handle())
 
     def download(self, obj: PinnedObject, options: Optional[DownloadOptions] = None) -> Download:

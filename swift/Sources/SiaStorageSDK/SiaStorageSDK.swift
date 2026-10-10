@@ -920,16 +920,6 @@ public protocol BuilderProtocol: AnyObject, Sendable {
      */
     func waitForApproval() async throws  -> Builder
     
-    /**
-     * Sets whether the SDK requests CBOR responses from the indexer (enabled
-     * by default). Responses are always decoded according to their content
-     * type; request bodies remain JSON. Only available before connecting.
-     *
-     * # Arguments
-     * * `enable` - Whether to request CBOR. Set to `false` to request JSON for easier inspection.
-     */
-    func withCbor(enable: Bool) throws  -> Builder
-    
 }
 open class Builder: BuilderProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -1179,23 +1169,6 @@ open func waitForApproval()async throws  -> Builder  {
             liftFunc: FfiConverterTypeBuilder_lift,
             errorHandler: FfiConverterTypeBuilderError_lift
         )
-}
-    
-    /**
-     * Sets whether the SDK requests CBOR responses from the indexer (enabled
-     * by default). Responses are always decoded according to their content
-     * type; request bodies remain JSON. Only available before connecting.
-     *
-     * # Arguments
-     * * `enable` - Whether to request CBOR. Set to `false` to request JSON for easier inspection.
-     */
-open func withCbor(enable: Bool)throws  -> Builder  {
-    return try  FfiConverterTypeBuilder_lift(try rustCallWithError(FfiConverterTypeBuilderError_lift) {
-    uniffi_sia_storage_ffi_fn_method_builder_with_cbor(
-            self.uniffiCloneHandle(),
-        FfiConverterBool.lower(enable),$0
-    )
-})
 }
     
 
@@ -3671,26 +3644,6 @@ public static func connect(indexerUrl: String, seed: Data)async throws  -> Share
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_constructor_sharedsdk_connect(FfiConverterString.lower(indexerUrl),FfiConverterData.lower(seed)
-                )
-            },
-            pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
-            completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
-            freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
-            liftFunc: FfiConverterTypeSharedSdk_lift,
-            errorHandler: FfiConverterTypeError_lift
-        )
-}
-    
-    /**
-     * Like [SharedSdk::connect], but sets whether the SDK requests CBOR
-     * responses from the indexer. Set `cbor` to `false` to request JSON for
-     * easier inspection.
-     */
-public static func connectWithCbor(indexerUrl: String, seed: Data, cbor: Bool)async throws  -> SharedSdk  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_sia_storage_ffi_fn_constructor_sharedsdk_connect_with_cbor(FfiConverterString.lower(indexerUrl),FfiConverterData.lower(seed),FfiConverterBool.lower(cbor)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
@@ -7165,9 +7118,6 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_builder_wait_for_approval() != 26618) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_builder_with_cbor() != 60774) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_sia_storage_ffi_checksum_method_reader_read() != 59516) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7220,9 +7170,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect() != 19048) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect_with_cbor() != 14887) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_sharingkey_from_seed() != 58765) {

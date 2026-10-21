@@ -2847,6 +2847,17 @@ public protocol SdkProtocol: AnyObject, Sendable {
     func object(key: String) async throws  -> PinnedObject
     
     /**
+     * Returns objects stored in the indexer without their slabs, which is
+     * much smaller and faster than `object_events`. Paginate with `cursor`
+     * as for `object_events`.
+     *
+     * # Arguments
+     * * `cursor` can be used to paginate through the results. If `cursor` is `None`, the first page of results will be returned.
+     * * `limit` specifies the maximum number of objects to return.
+     */
+    func objectEventSummaries(cursor: ObjectsCursor?, limit: UInt32) async throws  -> [ObjectEventSummary]
+    
+    /**
      * Returns objects stored in the indexer. When syncing, the caller should
      * provide the last `updated_at` timestamp and `id` seen in the `cursor`
      * parameter to avoid missing or duplicating objects.
@@ -3131,6 +3142,32 @@ open func object(key: String)async throws  -> PinnedObject  {
             completeFunc: ffi_sia_storage_ffi_rust_future_complete_u64,
             freeFunc: ffi_sia_storage_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypePinnedObject_lift,
+            errorHandler: FfiConverterTypeError_lift
+        )
+}
+    
+    /**
+     * Returns objects stored in the indexer without their slabs, which is
+     * much smaller and faster than `object_events`. Paginate with `cursor`
+     * as for `object_events`.
+     *
+     * # Arguments
+     * * `cursor` can be used to paginate through the results. If `cursor` is `None`, the first page of results will be returned.
+     * * `limit` specifies the maximum number of objects to return.
+     */
+open func objectEventSummaries(cursor: ObjectsCursor?, limit: UInt32)async throws  -> [ObjectEventSummary]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_sia_storage_ffi_fn_method_sdk_object_event_summaries(
+                    self.uniffiCloneHandle(),
+                    FfiConverterOptionTypeObjectsCursor.lower(cursor),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_sia_storage_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_sia_storage_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_sia_storage_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeObjectEventSummary.lift,
             errorHandler: FfiConverterTypeError_lift
         )
 }
@@ -4785,9 +4822,74 @@ public func FfiConverterTypeObjectEvent_lower(_ value: ObjectEvent) -> RustBuffe
 
 
 /**
- * An object listed without its slabs, as `SharedSdk::object_summaries`
- * returns it. It cannot be downloaded. Fetch the full object with
- * `SharedSdk::object` to download it.
+ * An `ObjectEvent` listed without the object's slabs.
+ */
+public struct ObjectEventSummary: Equatable, Hashable {
+    public var id: String
+    public var deleted: Bool
+    public var updatedAt: Date
+    public var object: ObjectSummary?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, deleted: Bool, updatedAt: Date, object: ObjectSummary?) {
+        self.id = id
+        self.deleted = deleted
+        self.updatedAt = updatedAt
+        self.object = object
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ObjectEventSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeObjectEventSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ObjectEventSummary {
+        return
+            try ObjectEventSummary(
+                id: FfiConverterString.read(from: &buf), 
+                deleted: FfiConverterBool.read(from: &buf), 
+                updatedAt: FfiConverterTimestamp.read(from: &buf), 
+                object: FfiConverterOptionTypeObjectSummary.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ObjectEventSummary, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterBool.write(value.deleted, into: &buf)
+        FfiConverterTimestamp.write(value.updatedAt, into: &buf)
+        FfiConverterOptionTypeObjectSummary.write(value.object, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeObjectEventSummary_lift(_ buf: RustBuffer) throws -> ObjectEventSummary {
+    return try FfiConverterTypeObjectEventSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeObjectEventSummary_lower(_ value: ObjectEventSummary) -> RustBuffer {
+    return FfiConverterTypeObjectEventSummary.lower(value)
+}
+
+
+/**
+ * An object listed without its slabs, as `Sdk::object_event_summaries` and
+ * `SharedSdk::object_summaries` return it. It cannot be downloaded. Fetch the
+ * full object with `Sdk::object` or `SharedSdk::object` to download it.
  */
 public struct ObjectSummary: Equatable, Hashable {
     public var id: String
@@ -6500,6 +6602,30 @@ fileprivate struct FfiConverterOptionTypeHostQuery: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeObjectSummary: FfiConverterRustBuffer {
+    typealias SwiftType = ObjectSummary?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeObjectSummary.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeObjectSummary.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeObjectsCursor: FfiConverterRustBuffer {
     typealias SwiftType = ObjectsCursor?
 
@@ -6665,6 +6791,31 @@ fileprivate struct FfiConverterSequenceTypeObjectEvent: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeObjectEvent.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeObjectEventSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [ObjectEventSummary]
+
+    public static func write(_ value: [ObjectEventSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeObjectEventSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ObjectEventSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ObjectEventSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeObjectEventSummary.read(from: &buf))
         }
         return seq
     }
@@ -7032,6 +7183,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_object() != 28006) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_sdk_object_event_summaries() != 64635) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_sdk_object_events() != 51406) {

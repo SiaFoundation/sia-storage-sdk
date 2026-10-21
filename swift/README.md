@@ -16,7 +16,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/SiaFoundation/sia-storage-sdk", from: "0.13.1")
+    .package(url: "https://github.com/SiaFoundation/sia-storage-sdk", from: "0.13.2")
 ]
 ```
 
@@ -36,7 +36,7 @@ Or in Xcode: File → Add Packages → enter the repository URL.
 ### CocoaPods
 
 ```ruby
-pod 'SiaStorageSDK', '~> 0.13.1'
+pod 'SiaStorageSDK', '~> 0.13.2'
 ```
 
 ## Example

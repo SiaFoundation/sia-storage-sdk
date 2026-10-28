@@ -5,6 +5,8 @@ on:
     branches:
       - master
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       publish:
@@ -213,7 +215,7 @@ jobs:
     name: Publish to Maven Central
     needs: package
     runs-on: ubuntu-latest
-    if: github.event.inputs.publish == 'true'
+    if: (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease) || (github.event_name == 'workflow_dispatch' && inputs.publish)
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
@@ -233,6 +235,14 @@ jobs:
         with:
           name: jar
           path: kotlin/build/libs
+
+      - name: Verify release version
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(sed -n 's/^version=//p' kotlin/gradle.properties)
+          test "$RELEASE_TAG" = "v$version"
 
       - name: Publish
         working-directory: kotlin

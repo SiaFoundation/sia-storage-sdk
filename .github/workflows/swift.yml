@@ -6,22 +6,20 @@ on:
       - master
   pull_request:
   workflow_dispatch:
+  workflow_call:
     inputs:
-      publish:
-        description: 'Create GitHub Release'
-        required: false
-        type: boolean
-        default: false
-      version:
-        description: 'Release version (e.g., 1.0.0)'
+      release-version:
+        description: 'Smoke test an already published, immutable release'
         required: false
         type: string
+        default: ''
 
 permissions:
   contents: read
 
 jobs:
   build:
+    if: inputs.release-version == ''
     name: Build XCFramework
     runs-on: macos-15
     steps:
@@ -121,136 +119,19 @@ jobs:
           EOF
           SIA_STORAGE_SDK_USE_LOCAL_XCFRAMEWORK=1 swift build
 
-  publish:
-    name: Publish to GitHub Releases
-    needs: [build, test]
-    runs-on: ubuntu-latest
-    if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-
-      - name: Download XCFramework
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          name: SiaStorageSDKFFI-xcframework
-          path: dist
-
-      - name: Download checksum
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          name: checksum
-          path: dist
-
-      - name: Validate version format
-        env:
-          VERSION: ${{ github.event.inputs.version }}
-        run: |
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: version must be in semver format (e.g., 1.0.0), got: $VERSION"
-            exit 1
-          fi
-
-      - name: Prepare release assets
-        env:
-          VERSION: ${{ github.event.inputs.version }}
-        run: |
-          cd dist
-          mv SiaStorageSDKFFI.xcframework.zip "SiaStorageSDKFFI-${VERSION}.xcframework.zip"
-          SHA256=$(shasum -a 256 "SiaStorageSDKFFI-${VERSION}.xcframework.zip" | cut -d' ' -f1)
-          SPM_CHECKSUM=$(cat checksum.txt)
-          echo "SiaStorageSDKFFI-${VERSION}.xcframework.zip: $SHA256" > CHECKSUMS.txt
-          echo "CHECKSUM_CONTENT=$(cat CHECKSUMS.txt)" >> "$GITHUB_ENV"
-          echo "SPM_CHECKSUM=$SPM_CHECKSUM" >> "$GITHUB_ENV"
-
-      - name: Validate manifest metadata
-        env:
-          VERSION: ${{ github.event.inputs.version }}
-        run: |
-          MANIFEST_URL=$(awk -F'"' '/url: "https:\/\/github.com\/SiaFoundation\/sia-storage-sdk\/releases\/download\/v/ {print $2}' Package.swift)
-          MANIFEST_VERSION=$(echo "$MANIFEST_URL" | sed -E 's#.*\/download\/v([0-9]+\.[0-9]+\.[0-9]+)\/.*#\1#')
-          PODSPEC_VERSION=$(awk -F"'" '/s.version/ {print $2}' SiaStorageSDK.podspec)
-
-          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
-            echo "Error: Package.swift release URL version ($MANIFEST_VERSION) does not match workflow version ($VERSION)"
-            exit 1
-          fi
-
-          if [ "$PODSPEC_VERSION" != "$VERSION" ]; then
-            echo "Error: SiaStorageSDK.podspec version ($PODSPEC_VERSION) does not match workflow version ($VERSION)"
-            exit 1
-          fi
-
-      - name: Update Package.swift checksum and tag release
-        env:
-          VERSION: ${{ github.event.inputs.version }}
-        run: |
-          if [ -z "$SPM_CHECKSUM" ]; then
-            echo "Error: SPM_CHECKSUM not set"
-            exit 1
-          fi
-          sed -i "s/checksum: \".*\"/checksum: \"$SPM_CHECKSUM\"/" Package.swift
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Package.swift
-          git commit -m "swift: update checksum for v${VERSION}"
-          git tag -a "v${VERSION}" -m "v${VERSION}"
-          git push origin HEAD:${{ github.ref_name }} "v${VERSION}"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
-        with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: SiaStorageSDK Swift v${{ github.event.inputs.version }}
-          body: |
-            ## SiaStorageSDK for Swift v${{ github.event.inputs.version }}
-
-            ### Installation
-
-            #### Swift Package Manager
-
-            Add to your `Package.swift`:
-            ```swift
-            dependencies: [
-                .package(url: "https://github.com/SiaFoundation/sia-storage-sdk", from: "${{ github.event.inputs.version }}")
-            ]
-            ```
-
-            Or add via Xcode: File → Add Packages → Enter repository URL.
-
-            #### CocoaPods
-
-            ```ruby
-            pod 'SiaStorageSDK', '~> ${{ github.event.inputs.version }}'
-            ```
-
-            ### Checksums
-            SHA-256:
-            ```
-            ${{ env.CHECKSUM_CONTENT }}
-            ```
-
-            SPM (`swift package compute-checksum`):
-            ```
-            ${{ env.SPM_CHECKSUM }}
-            ```
-          files: |
-            dist/SiaStorageSDKFFI-${{ github.event.inputs.version }}.xcframework.zip
-            dist/CHECKSUMS.txt
-          draft: false
-          prerelease: false
-
   smoke-test-release:
     name: Smoke test published release
-    needs: publish
     runs-on: macos-15
-    if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
+    if: inputs.release-version != ''
     steps:
       - name: Build downstream package from released tag
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ inputs.release-version }}
         run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a stable major.minor.patch release version" >&2
+            exit 1
+          fi
           TMP_DIR="$(mktemp -d)"
           cd "$TMP_DIR"
           swift package init --type executable

@@ -48,7 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           current_rev=$(sed -n 's/^sia_storage_ffi = {.*rev = "\([0-9a-f]\{40\}\)".*/\1/p' Cargo.toml)
-          current_version=$(sed -n '0,/^version = /s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          # The wrapper version is owned by Knope, not by the upstream SDK.
+          current_version=$(python3 -c 'import tomllib; lock=tomllib.load(open("Cargo.lock", "rb")); print(next(p["version"] for p in lock["package"] if p["name"] == "sia_storage_ffi"))')
           : "${current_rev:?Could not read sia_storage_ffi rev from Cargo.toml}"
           : "${current_version:?Could not read package version from Cargo.toml}"
 
@@ -96,31 +97,17 @@ jobs:
             echo "tag=$tag"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Update version references
+      - name: Update the upstream revision
         if: steps.update.outputs.changed == 'true'
         env:
           CURRENT_REV: ${{ steps.update.outputs.current_rev }}
           REV: ${{ steps.update.outputs.rev }}
-          VERSION: ${{ steps.update.outputs.version }}
         run: |
           set -euo pipefail
           sed -i "s|rev = \"$CURRENT_REV\"|rev = \"$REV\"|" Cargo.toml
-          sed -i "0,/^version = /s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
-          sed -i -E "s|/releases/download/v[0-9.]+/SiaStorageSDKFFI-[0-9.]+\.xcframework\.zip|/releases/download/v$VERSION/SiaStorageSDKFFI-$VERSION.xcframework.zip|" Package.swift
-          sed -i -E "s|(s\.version[[:space:]]*=[[:space:]]*')[^']*'|\1$VERSION'|" SiaStorageSDK.podspec
-          sed -i -E "s|^version=.*|version=$VERSION|" kotlin/gradle.properties examples/kotlin/gradle.properties
-          sed -i -E "s|tech\.sia:siastoragesdk:[0-9.]+|tech.sia:siastoragesdk:$VERSION|" kotlin/README.md examples/kotlin/README.md
-          sed -i -E \
-            -e "s|(sia-storage-sdk\", from: \")[0-9.]+\"|\1$VERSION\"|" \
-            -e "s|(pod 'SiaStorageSDK', '~> )[0-9.]+'|\1$VERSION'|" \
-            swift/README.md
-
           grep -qF "rev = \"$REV\"" Cargo.toml
-          for file in Cargo.toml Package.swift SiaStorageSDK.podspec \
-            kotlin/gradle.properties examples/kotlin/gradle.properties \
-            kotlin/README.md examples/kotlin/README.md swift/README.md; do
-            grep -qF "$VERSION" "$file"
-          done
+          # Do not pre-bump binding versions or the Swift URL/checksum. Knope
+          # owns those in the release PR after the upstream changes are reviewed.
 
       - name: Install Rust
         if: steps.update.outputs.changed == 'true'
@@ -173,7 +160,7 @@ jobs:
 
           $result
 
-          Before merging, review the hand-written Kotlin, Swift, and Python wrappers. The \`Package.swift\` checksum remains unchanged until the new xcframework is published.
+          Before merging, review the hand-written Kotlin, Swift, and Python wrappers and add change files with \`knope document-change\`, preserving the upstream major/minor/patch classification. Do not bump binding versions here: Knope prepares the shared version and Swift checksum in a separate release PR.
           EOF
           )
 

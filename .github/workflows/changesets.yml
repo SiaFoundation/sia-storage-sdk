@@ -1,0 +1,38 @@
+name: Changesets
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  changesets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: knope-dev/action@19617851f9f13ab2f27a05989c55efb18aca3675 # v2.1.2
+        with:
+          version: 0.22.2
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - run: python3 .github/scripts/check_changesets.py
+      - run: knope --validate
+      - name: Check the prepared release still matches its sources
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.ref == 'release' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        run: python3 .github/scripts/swift_release.py metadata
+      - name: Preview pending release
+        run: |
+          if compgen -G '.changeset/*.md' > /dev/null; then
+            knope prepare-release --dry-run
+          fi

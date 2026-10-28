@@ -5,6 +5,8 @@ on:
     branches:
       - master
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       publish:
@@ -136,7 +138,7 @@ jobs:
     name: Publish to PyPI
     needs: [build, sdist, test]
     runs-on: ubuntu-latest
-    if: github.event.inputs.publish == 'true'
+    if: (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease) || (github.event_name == 'workflow_dispatch' && inputs.publish)
     environment:
       name: pypi
       url: https://pypi.org/project/sia_storage/
@@ -149,6 +151,23 @@ jobs:
           pattern: wheels-*
           path: dist
           merge-multiple: true
+
+      - name: Verify release wheel versions
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python3 - <<'PYCODE'
+          import os, pathlib, zipfile, email
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          wheels = list(pathlib.Path("dist").glob("*.whl"))
+          assert wheels, "No wheels to publish"
+          for wheel in wheels:
+              with zipfile.ZipFile(wheel) as archive:
+                  metadata = next(n for n in archive.namelist() if n.endswith(".dist-info/METADATA"))
+                  actual = email.message_from_bytes(archive.read(metadata))["Version"]
+                  assert actual == version, f"{wheel}: {actual} != {version}"
+          PYCODE
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1

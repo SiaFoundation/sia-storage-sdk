@@ -1,0 +1,58 @@
+# These three bindings ship together and share one version and release tag.
+[changes]
+ignore_conventional_commits = true
+
+[package]
+versioned_files = [
+    "Cargo.toml",
+    { path = "Cargo.lock", dependency = "sia_storage_sdk" },
+    { path = "kotlin/gradle.properties", regex = '(?m)^version=(?<version>\d+\.\d+\.\d+)$' },
+    { path = "examples/kotlin/gradle.properties", regex = '(?m)^version=(?<version>\d+\.\d+\.\d+)$' },
+    { path = "kotlin/README.md", regex = 'tech\.sia:siastoragesdk:(?<version>\d+\.\d+\.\d+)' },
+    { path = "examples/kotlin/README.md", regex = 'tech\.sia:siastoragesdk:(?<version>\d+\.\d+\.\d+)' },
+    { path = "SiaStorageSDK.podspec", regex = "s\\.version\\s*=\\s*'(?<version>\\d+\\.\\d+\\.\\d+)'" },
+    { path = "Package.swift", regex = [
+        'releases/download/v(?<version>\d+\.\d+\.\d+)/',
+        'SiaStorageSDKFFI-(?<version>\d+\.\d+\.\d+)\.xcframework\.zip',
+    ] },
+    { path = "swift/README.md", regex = [
+        'sia-storage-sdk", from: "(?<version>\d+\.\d+\.\d+)"',
+        "pod 'SiaStorageSDK', '~> (?<version>\\d+\\.\\d+\\.\\d+)'",
+    ] },
+]
+changelog = "CHANGELOG.md"
+assets = "build/release/*"
+
+[github]
+owner = "SiaFoundation"
+repo = "sia-storage-sdk"
+
+[[workflows]]
+name = "document-change"
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+# GitHub Actions builds and records the Swift artifact before committing this
+# result, so the release PR contains the checksum of the exact ZIP we publish.
+[[workflows]]
+name = "prepare-release"
+[[workflows.steps]]
+type = "PrepareRelease"
+
+[[workflows]]
+name = "release-pull-request"
+[[workflows.steps]]
+type = "CreatePullRequest"
+base = "master"
+[workflows.steps.title]
+template = "chore: prepare release $version"
+[workflows.steps.body]
+template = "Merging this PR releases Kotlin, Python, and Swift $version. The Swift checksum is recorded from the retained release artifact.\n\n$changelog"
+
+[[workflows]]
+name = "release"
+[[workflows.steps]]
+type = "Command"
+command = "python3 .github/scripts/swift_release.py verify"
+[[workflows.steps]]
+type = "Release"

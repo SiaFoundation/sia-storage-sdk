@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+concurrency: release
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    # A closed, unmerged PR, ordinary PR, or similarly named fork branch is not
+    # a release. Release the exact reviewed merge, never a newer master HEAD.
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'release' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.artifact.outputs.version }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Read reviewed release metadata
+        id: artifact
+        run: python3 .github/scripts/swift_release.py metadata >> "$GITHUB_OUTPUT"
+      - name: Verify artifact workflow provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.artifact.outputs.run_id }}
+          RUN_ATTEMPT: ${{ steps.artifact.outputs.run_attempt }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT" > "$RUNNER_TEMP/prepare-run.json"
+          python3 - "$RUNNER_TEMP/prepare-run.json" <<'PYCODE'
+          import json, os, sys
+          run = json.load(open(sys.argv[1]))
+          assert run["path"] == ".github/workflows/prepare-release.yml", "Wrong workflow"
+          assert run["head_branch"] == "master", "Wrong source branch"
+          assert run["head_repository"]["full_name"] == os.environ["GITHUB_REPOSITORY"], "Wrong repository"
+          assert run["event"] in ("push", "workflow_dispatch"), "Untrusted trigger"
+          assert run["conclusion"] == "success", "Preparation did not succeed"
+          PYCODE
+      - name: Download the exact prepared Swift artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: ${{ steps.artifact.outputs.artifact_name }}
+          run-id: ${{ steps.artifact.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: build/release/
+      - name: Verify release files and artifact
+        run: |
+          python3 .github/scripts/check_changesets.py
+          python3 .github/scripts/swift_release.py verify
+      # A release made with GITHUB_TOKEN would suppress the published event
+      # that the Kotlin and Python package-publishing workflows consume.
+      - name: Mint bot token
+        id: bot-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.SIA_CI_BOT_APP_ID }}
+          private-key: ${{ secrets.SIA_CI_BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: knope-dev/action@19617851f9f13ab2f27a05989c55efb18aca3675 # v2.1.2
+        with:
+          version: 0.22.2
+      - name: Publish the reviewed release
+        run: knope release --verbose
+        env:
+          GITHUB_TOKEN: ${{ steps.bot-token.outputs.token }}
+
+  swift-smoke-test:
+    needs: release
+    uses: ./.github/workflows/swift.yml
+    with:
+      release-version: ${{ needs.release.outputs.version }}

@@ -1852,6 +1852,7 @@ checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
  "once_cell",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -2142,7 +2143,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 [[package]]
 name = "sia_core"
 version = "0.6.0"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=5dd6520c82c010156e13a81034687946571a5a8a#5dd6520c82c010156e13a81034687946571a5a8a"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=3bb26cb78cd49c809f21688df5c34bee71d83f12#3bb26cb78cd49c809f21688df5c34bee71d83f12"
 dependencies = [
  "base64 0.23.1",
  "bip39",
@@ -2166,7 +2167,7 @@ dependencies = [
 [[package]]
 name = "sia_core_derive"
 version = "0.1.2"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=5dd6520c82c010156e13a81034687946571a5a8a#5dd6520c82c010156e13a81034687946571a5a8a"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=3bb26cb78cd49c809f21688df5c34bee71d83f12#3bb26cb78cd49c809f21688df5c34bee71d83f12"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2176,7 +2177,7 @@ dependencies = [
 [[package]]
 name = "sia_mux"
 version = "0.1.5"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=5dd6520c82c010156e13a81034687946571a5a8a#5dd6520c82c010156e13a81034687946571a5a8a"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=3bb26cb78cd49c809f21688df5c34bee71d83f12#3bb26cb78cd49c809f21688df5c34bee71d83f12"
 dependencies = [
  "blake2b_simd",
  "bytes",
@@ -2201,8 +2202,8 @@ dependencies = [
 
 [[package]]
 name = "sia_storage"
-version = "0.13.2"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=5dd6520c82c010156e13a81034687946571a5a8a#5dd6520c82c010156e13a81034687946571a5a8a"
+version = "0.13.4"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=3bb26cb78cd49c809f21688df5c34bee71d83f12#3bb26cb78cd49c809f21688df5c34bee71d83f12"
 dependencies = [
  "base64 0.23.1",
  "blake2b_simd",
@@ -2240,8 +2241,8 @@ dependencies = [
 
 [[package]]
 name = "sia_storage_ffi"
-version = "0.13.2"
-source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=5dd6520c82c010156e13a81034687946571a5a8a#5dd6520c82c010156e13a81034687946571a5a8a"
+version = "0.13.3"
+source = "git+https://github.com/SiaFoundation/sia-sdk-rs.git?rev=3bb26cb78cd49c809f21688df5c34bee71d83f12#3bb26cb78cd49c809f21688df5c34bee71d83f12"
 dependencies = [
  "async-trait",
  "log",
@@ -2257,7 +2258,7 @@ dependencies = [
 
 [[package]]
 name = "sia_storage_sdk"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "sia_storage_ffi",
  "uniffi",

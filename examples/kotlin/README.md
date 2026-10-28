@@ -8,7 +8,7 @@ Add the dependency to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("tech.sia:siastoragesdk:0.13.3")
+    implementation("tech.sia:siastoragesdk:0.13.4")
 }
 ```
 

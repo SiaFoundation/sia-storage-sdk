@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -233,3 +234,45 @@ suspend fun PackedUpload.add(
 suspend fun PackedUpload.add(
     file: File,
 ): ULong = addPath(file.path)
+
+/**
+ * Imports a pre-authorized key from its 32-byte seed.
+ *
+ * `import` is a soft keyword in Kotlin, so the generated companion
+ * constructor has to be called with backticks. This is the natural spelling
+ * of it.
+ *
+ * Example:
+ * ```kotlin
+ * val key = PreAuthorizedKey.fromSeed(storedSeed)
+ * ```
+ */
+fun PreAuthorizedKey.Companion.fromSeed(seed: ByteArray): PreAuthorizedKey =
+    PreAuthorizedKey.`import`(seed)
+
+/**
+ * Signs a request to create this pre-authorized key in indexd and returns the
+ * JSON body to post.
+ *
+ * Example:
+ * ```kotlin
+ * val body = key.signRequest(
+ *     connectKey = connectKey,
+ *     expiration = Instant.now().plusSeconds(3600),
+ *     totalUses = 1u,
+ * )
+ * ```
+ */
+fun PreAuthorizedKey.signRequest(
+    connectKey: String,
+    expiration: Instant,
+    totalUses: UInt,
+    allowedAppId: String? = null,
+): String = signRequest(
+    PreAuthorizedKeyRequest(
+        connectKey = connectKey,
+        expiration = expiration,
+        totalUses = totalUses,
+        allowedAppId = allowedAppId,
+    ),
+)

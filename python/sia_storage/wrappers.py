@@ -22,6 +22,7 @@ from .sia_storage.sia_storage_ffi import (
     PackedUpload as _PackedUpload,
     PackedUploadOptions,
     PinnedObject,
+    PreAuthorizedKey as _PreAuthorizedKey,
     ProgressCallback,
     Reader,
     Sdk as _Sdk,
@@ -78,6 +79,27 @@ def _prepare_download_options(options: Optional[DownloadOptions]) -> DownloadOpt
     return options
 
 
+class PreAuthorizedKey(_PreAuthorizedKey):
+    """A key used to authorize application connections without interactive approval.
+
+    Construct one with `PreAuthorizedKey()` to generate a random key, or
+    restore a stored key with `PreAuthorizedKey.from_seed(seed)`.
+    """
+
+    @classmethod
+    def from_seed(cls, seed: bytes) -> PreAuthorizedKey:
+        """Imports a pre-authorized key from its 32-byte seed.
+
+        `import` is a reserved word in Python, so the generated binding exposes
+        the constructor as `_import`. This is the public spelling of it.
+
+        Args:
+            seed: The secret 32-byte seed previously returned by export().
+        """
+        # exploits UniFFI's internals to wrap the class
+        return cls._uniffi_make_instance(cls._import(seed)._uniffi_clone_handle())
+
+
 class Builder(_Builder):
     """Creates a new SDK builder with the provided indexer URL.
 
@@ -118,12 +140,14 @@ class Builder(_Builder):
         """
         return Sdk._from_ffi(await super().register(mnemonic))
 
-    async def connect_pre_authorized(self, pre_authorized_key: bytes, mnemonic: str) -> Sdk:
+    async def connect_pre_authorized(
+        self, pre_authorized_key: PreAuthorizedKey, mnemonic: str
+    ) -> Sdk:
         """Connects using a pre-authorized key, bypassing the interactive
         approval flow, and returns an Sdk instance directly.
 
         Args:
-            pre_authorized_key: The 32-byte pre-authorized private key seed.
+            pre_authorized_key: The key authorizing the application connection.
             mnemonic: The user's mnemonic phrase used to derive the application key.
         """
         return Sdk._from_ffi(await super().connect_pre_authorized(pre_authorized_key, mnemonic))

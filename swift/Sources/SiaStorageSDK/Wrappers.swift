@@ -329,3 +329,68 @@ extension PackedUpload {
         return try await addPath(path: url.path)
     }
 }
+
+    /**
+     * Conveniences for pre-authorized keys, which let an app connect without
+     * interactive approval.
+     *
+     * Example:
+     * ```swift
+     * let key = PreAuthorizedKey()
+     * let seed = key.export()
+     *
+     * // Later, restore the same key from its stored seed.
+     * let restored = try PreAuthorizedKey(seed: seed)
+     *
+     * let sdk = try await builder.connectPreAuthorized(
+     *     preAuthorizedKey: restored,
+     *     mnemonic: mnemonic
+     * )
+     * ```
+     */
+    extension PreAuthorizedKey {
+        /**
+         * Imports a pre-authorized key from its 32-byte seed.
+         *
+         * `import` is a Swift keyword, so the generated static constructor is
+         * spelled `` `import`(seed:) ``. This is the natural initializer form.
+         *
+         * Example:
+         * ```swift
+         * let key = try PreAuthorizedKey(seed: storedSeed)
+         * ```
+         */
+        public convenience init(seed: Data) throws {
+            let imported = try PreAuthorizedKey.`import`(seed: seed)
+            self.init(unsafeFromHandle: imported.uniffiCloneHandle())
+        }
+
+        /**
+         * Signs a request to create this pre-authorized key in indexd and returns
+         * the JSON body to post.
+         *
+         * Example:
+         * ```swift
+         * let body = try key.signRequest(
+         *     connectKey: connectKey,
+         *     expiration: Date().addingTimeInterval(3600),
+         *     totalUses: 1
+         * )
+         * ```
+         */
+        public func signRequest(
+            connectKey: String,
+            expiration: Date,
+            totalUses: UInt32,
+            allowedAppId: String? = nil
+        ) throws -> String {
+            return try signRequest(
+                request: PreAuthorizedKeyRequest(
+                    connectKey: connectKey,
+                    expiration: expiration,
+                    totalUses: totalUses,
+                    allowedAppId: allowedAppId
+                )
+            )
+        }
+    }

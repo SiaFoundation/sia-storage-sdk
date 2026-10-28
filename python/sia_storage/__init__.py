@@ -25,6 +25,7 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     ObjectSummary,
     ObjectsCursor,
     PinnedSector,
+    PreAuthorizedKeyRequest,
     SealedObject,
     ShardProgress,
     Slab,
@@ -42,6 +43,7 @@ from sia_storage.sia_storage.sia_storage_ffi import (
     SeedError,
     BuilderError,
     ObjectError,
+    PreAuthorizedKeyError,
     IoError,
     # Base classes for implementing custom traits
     Logger,
@@ -55,6 +57,7 @@ from sia_storage.wrappers import (
     BytesReader,
     Download,
     PackedUpload,
+    PreAuthorizedKey,
     Sdk,
     SharedSdk,
 )
@@ -75,6 +78,7 @@ __all__ = [
     "Builder",
     "AppKey",
     "PinnedObject",
+    "PreAuthorizedKey",
     "SharingKey",
     "SharedSdk",
     "PackedUpload",
@@ -95,6 +99,7 @@ __all__ = [
     "ObjectSummary",
     "ObjectsCursor",
     "PinnedSector",
+    "PreAuthorizedKeyRequest",
     "SealedObject",
     "ShardProgress",
     "Slab",
@@ -112,6 +117,7 @@ __all__ = [
     "SeedError",
     "BuilderError",
     "ObjectError",
+    "PreAuthorizedKeyError",
     "IOError",  # alias
     # Base classes for implementing custom traits
     "Logger",

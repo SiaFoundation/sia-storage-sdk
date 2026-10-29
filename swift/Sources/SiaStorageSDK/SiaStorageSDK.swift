@@ -846,10 +846,10 @@ public protocol BuilderProtocol: AnyObject, Sendable {
      * flow, and returns an [Sdk] directly.
      *
      * # Arguments
-     * * `pre_authorized_key` - The 32-byte pre-authorized private key seed.
+     * * `pre_authorized_key` - The key authorizing the application connection.
      * * `mnemonic` - The user's mnemonic phrase used to derive the app key.
      */
-    func connectPreAuthorized(preAuthorizedKey: Data, mnemonic: String) async throws  -> Sdk
+    func connectPreAuthorized(preAuthorizedKey: PreAuthorizedKey, mnemonic: String) async throws  -> Sdk
     
     /**
      * Attempts to connect using the provided app key.
@@ -995,16 +995,16 @@ public convenience init(indexerUrl: String, appMeta: AppMetadata)throws  {
      * flow, and returns an [Sdk] directly.
      *
      * # Arguments
-     * * `pre_authorized_key` - The 32-byte pre-authorized private key seed.
+     * * `pre_authorized_key` - The key authorizing the application connection.
      * * `mnemonic` - The user's mnemonic phrase used to derive the app key.
      */
-open func connectPreAuthorized(preAuthorizedKey: Data, mnemonic: String)async throws  -> Sdk  {
+open func connectPreAuthorized(preAuthorizedKey: PreAuthorizedKey, mnemonic: String)async throws  -> Sdk  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_sia_storage_ffi_fn_method_builder_connect_pre_authorized(
                     self.uniffiCloneHandle(),
-                    FfiConverterData.lower(preAuthorizedKey),FfiConverterString.lower(mnemonic)
+                    FfiConverterTypePreAuthorizedKey_lower(preAuthorizedKey),FfiConverterString.lower(mnemonic)
                 )
             },
             pollFunc: ffi_sia_storage_ffi_rust_future_poll_u64,
@@ -2370,6 +2370,223 @@ public func FfiConverterTypePinnedObject_lift(_ handle: UInt64) throws -> Pinned
 #endif
 public func FfiConverterTypePinnedObject_lower(_ value: PinnedObject) -> UInt64 {
     return FfiConverterTypePinnedObject.lower(value)
+}
+
+
+
+
+
+
+/**
+ * A key used to authorize application connections without interactive approval.
+ */
+public protocol PreAuthorizedKeyProtocol: AnyObject, Sendable {
+    
+    /**
+     * Exports the secret 32-byte seed for storage and later import.
+     */
+    func export()  -> Data
+    
+    /**
+     * Returns the public key as an ed25519-prefixed string.
+     */
+    func publicKey()  -> String
+    
+    /**
+     * Signs a message with this key.
+     */
+    func sign(message: Data)  -> Data
+    
+    /**
+     * Returns the signed JSON body for creating a pre-authorized key in indexd.
+     */
+    func signRequest(request: PreAuthorizedKeyRequest) throws  -> String
+    
+    /**
+     * Verifies a message signature using this key's public key.
+     */
+    func verifySignature(message: Data, signature: Data) throws  -> Bool
+    
+}
+/**
+ * A key used to authorize application connections without interactive approval.
+ */
+open class PreAuthorizedKey: PreAuthorizedKeyProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_sia_storage_ffi_fn_clone_preauthorizedkey(self.handle, $0) }
+    }
+    /**
+     * Generates a random pre-authorized key.
+     */
+public convenience init() {
+    let handle =
+        try! rustCall() {
+    uniffi_sia_storage_ffi_fn_constructor_preauthorizedkey_new($0
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_sia_storage_ffi_fn_free_preauthorizedkey(handle, $0) }
+    }
+
+    
+    /**
+     * Imports a pre-authorized key from its 32-byte seed.
+     */
+public static func `import`(seed: Data)throws  -> PreAuthorizedKey  {
+    return try  FfiConverterTypePreAuthorizedKey_lift(try rustCallWithError(FfiConverterTypePreAuthorizedKeyError_lift) {
+    uniffi_sia_storage_ffi_fn_constructor_preauthorizedkey_import(
+        FfiConverterData.lower(seed),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Exports the secret 32-byte seed for storage and later import.
+     */
+open func export() -> Data  {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_preauthorizedkey_export(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * Returns the public key as an ed25519-prefixed string.
+     */
+open func publicKey() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_preauthorizedkey_public_key(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * Signs a message with this key.
+     */
+open func sign(message: Data) -> Data  {
+    return try!  FfiConverterData.lift(try! rustCall() {
+    uniffi_sia_storage_ffi_fn_method_preauthorizedkey_sign(
+            self.uniffiCloneHandle(),
+        FfiConverterData.lower(message),$0
+    )
+})
+}
+    
+    /**
+     * Returns the signed JSON body for creating a pre-authorized key in indexd.
+     */
+open func signRequest(request: PreAuthorizedKeyRequest)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypePreAuthorizedKeyError_lift) {
+    uniffi_sia_storage_ffi_fn_method_preauthorizedkey_sign_request(
+            self.uniffiCloneHandle(),
+        FfiConverterTypePreAuthorizedKeyRequest_lower(request),$0
+    )
+})
+}
+    
+    /**
+     * Verifies a message signature using this key's public key.
+     */
+open func verifySignature(message: Data, signature: Data)throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypePreAuthorizedKeyError_lift) {
+    uniffi_sia_storage_ffi_fn_method_preauthorizedkey_verify_signature(
+            self.uniffiCloneHandle(),
+        FfiConverterData.lower(message),
+        FfiConverterData.lower(signature),$0
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePreAuthorizedKey: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = PreAuthorizedKey
+
+    public static func lift(_ handle: UInt64) throws -> PreAuthorizedKey {
+        return PreAuthorizedKey(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: PreAuthorizedKey) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PreAuthorizedKey {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: PreAuthorizedKey, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKey_lift(_ handle: UInt64) throws -> PreAuthorizedKey {
+    return try FfiConverterTypePreAuthorizedKey.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKey_lower(_ value: PreAuthorizedKey) -> UInt64 {
+    return FfiConverterTypePreAuthorizedKey.lower(value)
 }
 
 
@@ -5153,6 +5370,71 @@ public func FfiConverterTypePinnedSector_lower(_ value: PinnedSector) -> RustBuf
 
 
 /**
+ * An unsigned request to create a pre-authorized key in indexd.
+ */
+public struct PreAuthorizedKeyRequest: Equatable, Hashable {
+    public var connectKey: String
+    public var expiration: Date
+    public var totalUses: UInt32
+    public var allowedAppId: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(connectKey: String, expiration: Date, totalUses: UInt32, allowedAppId: String? = nil) {
+        self.connectKey = connectKey
+        self.expiration = expiration
+        self.totalUses = totalUses
+        self.allowedAppId = allowedAppId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PreAuthorizedKeyRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePreAuthorizedKeyRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PreAuthorizedKeyRequest {
+        return
+            try PreAuthorizedKeyRequest(
+                connectKey: FfiConverterString.read(from: &buf), 
+                expiration: FfiConverterTimestamp.read(from: &buf), 
+                totalUses: FfiConverterUInt32.read(from: &buf), 
+                allowedAppId: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PreAuthorizedKeyRequest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.connectKey, into: &buf)
+        FfiConverterTimestamp.write(value.expiration, into: &buf)
+        FfiConverterUInt32.write(value.totalUses, into: &buf)
+        FfiConverterOptionString.write(value.allowedAppId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKeyRequest_lift(_ buf: RustBuffer) throws -> PreAuthorizedKeyRequest {
+    return try FfiConverterTypePreAuthorizedKeyRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKeyRequest_lower(_ value: PreAuthorizedKeyRequest) -> RustBuffer {
+    return FfiConverterTypePreAuthorizedKeyRequest.lower(value)
+}
+
+
+/**
  * A sealed object represents an object that has been encrypted
  * for secure offline storage or processing. It can be opened using
  * an app key to retrieve the original object.
@@ -6177,6 +6459,112 @@ public func FfiConverterTypeObjectError_lift(_ buf: RustBuffer) throws -> Object
 #endif
 public func FfiConverterTypeObjectError_lower(_ value: ObjectError) -> RustBuffer {
     return FfiConverterTypeObjectError.lower(value)
+}
+
+
+public enum PreAuthorizedKeyError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case InvalidLength(message: String)
+    
+    case SignatureLength(message: String)
+    
+    case InvalidAppId(message: String)
+    
+    case InvalidTimestamp(message: String)
+    
+    case Serialization(message: String)
+    
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension PreAuthorizedKeyError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePreAuthorizedKeyError: FfiConverterRustBuffer {
+    typealias SwiftType = PreAuthorizedKeyError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PreAuthorizedKeyError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .InvalidLength(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .SignatureLength(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 3: return .InvalidAppId(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 4: return .InvalidTimestamp(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 5: return .Serialization(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PreAuthorizedKeyError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        case .InvalidLength(_ /* message is ignored*/):
+            writeInt(&buf, Int32(1))
+        case .SignatureLength(_ /* message is ignored*/):
+            writeInt(&buf, Int32(2))
+        case .InvalidAppId(_ /* message is ignored*/):
+            writeInt(&buf, Int32(3))
+        case .InvalidTimestamp(_ /* message is ignored*/):
+            writeInt(&buf, Int32(4))
+        case .Serialization(_ /* message is ignored*/):
+            writeInt(&buf, Int32(5))
+
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKeyError_lift(_ buf: RustBuffer) throws -> PreAuthorizedKeyError {
+    return try FfiConverterTypePreAuthorizedKeyError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePreAuthorizedKeyError_lower(_ value: PreAuthorizedKeyError) -> RustBuffer {
+    return FfiConverterTypePreAuthorizedKeyError.lower(value)
 }
 
 
@@ -7248,7 +7636,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_appkey_verify_signature() != 38967) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sia_storage_ffi_checksum_method_builder_connect_pre_authorized() != 20053) {
+    if (uniffi_sia_storage_ffi_checksum_method_builder_connect_pre_authorized() != 19406) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_method_builder_connected() != 44195) {
@@ -7287,6 +7675,21 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sia_storage_ffi_checksum_method_logger_debug() != 60732) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sia_storage_ffi_checksum_method_preauthorizedkey_export() != 36593) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_preauthorizedkey_public_key() != 44224) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_preauthorizedkey_sign() != 65493) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_preauthorizedkey_sign_request() != 19884) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_method_preauthorizedkey_verify_signature() != 2756) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sia_storage_ffi_checksum_method_sharedsdk_download() != 60018) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7321,6 +7724,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_builder_new() != 24760) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_preauthorizedkey_import() != 62666) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sia_storage_ffi_checksum_constructor_preauthorizedkey_new() != 61541) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sia_storage_ffi_checksum_constructor_sharedsdk_connect() != 19048) {
